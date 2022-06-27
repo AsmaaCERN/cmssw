@@ -5,20 +5,15 @@
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/Utilities/interface/InputTag.h"
-
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #include "RecoVertex/VertexPrimitives/interface/TransientVertex.h"
 #include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
-
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "DataFormats/BeamSpot/interface/BeamSpot.h"
-
 #include "RecoVertex/VertexTools/interface/GeometricAnnealing.h"
-
 #include "HeterogeneousCore/CUDAUtilities/interface/host_unique_ptr.h"
 #include "HeterogeneousCore/CUDAUtilities/interface/device_unique_ptr.h"
 #include "HeterogeneousCore/CUDAUtilities/interface/host_noncached_unique_ptr.h"
-
 #include "HeterogeneousCore/CUDAUtilities/interface/cudaCheck.h"
 
 PrimaryVertexProducerCUDA::PrimaryVertexProducerCUDA(const edm::ParameterSet& conf)

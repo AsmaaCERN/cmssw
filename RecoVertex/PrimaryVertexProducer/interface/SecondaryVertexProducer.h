@@ -28,7 +28,7 @@
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
-#include "RecoVertex/PrimaryVertexProducer/interface/PrimaryVertexProducerAlgorithm.h"
+#include "RecoVertex/PrimaryVertexProducer/interface/DisplacedVertexProducerAlgorithm.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
 #include "TrackingTools/Records/interface/TransientTrackRecord.h"
@@ -36,13 +36,14 @@
 #include "RecoVertex/PrimaryVertexProducer/interface/TrackClusterizerInZ.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/DAClusterizerInZ_vect.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/DAClusterizerInZT_vect.h"
+
 #include "RecoVertex/PrimaryVertexProducer/interface/TrackFilterForPVFinding.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/HITrackFilterForPVFinding.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/GapClusterizerInZ.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/DAClusterizerInZ.h"
 #include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
 #include "RecoVertex/AdaptiveVertexFit/interface/AdaptiveVertexFitter.h"
-#include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
+//#include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
 #include "RecoVertex/VertexPrimitives/interface/VertexException.h"
 #include <algorithm>
 #include "RecoVertex/PrimaryVertexProducer/interface/VertexHigherPtSquared.h"
@@ -52,10 +53,10 @@
 // class declaration
 //
 
-class PrimaryVertexProducer : public edm::stream::EDProducer<> {
+class DisplacedVertexProducer : public edm::stream::EDProducer<> {
 public:
-  PrimaryVertexProducer(const edm::ParameterSet&);
-  ~PrimaryVertexProducer() override;
+  DisplacedVertexProducer(const edm::ParameterSet&);
+  ~DisplacedVertexProducer() override;
 
   void produce(edm::Event&, const edm::EventSetup&) override;
 

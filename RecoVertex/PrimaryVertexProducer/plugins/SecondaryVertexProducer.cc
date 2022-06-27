@@ -1,18 +1,21 @@
-#include "RecoVertex/PrimaryVertexProducer/interface/PrimaryVertexProducer.h"
+#include "RecoVertex/PrimaryVertexProducer/interface/SecondaryVertexProducer.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/Common/interface/Handle.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/Utilities/interface/InputTag.h"
+
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #include "RecoVertex/VertexPrimitives/interface/TransientVertex.h"
 #include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
+
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "DataFormats/BeamSpot/interface/BeamSpot.h"
+
 #include "RecoVertex/VertexTools/interface/GeometricAnnealing.h"
 
-PrimaryVertexProducer::PrimaryVertexProducer(const edm::ParameterSet& conf)
+DisplacedVertexProducer::DisplacedVertexProducer(const edm::ParameterSet& conf)
     : theTTBToken(esConsumes(edm::ESInputTag("", "TransientTrackBuilder"))), theConfig(conf) {
   fVerbose = conf.getUntrackedParameter<bool>("verbose", false);
 
@@ -28,7 +31,7 @@ PrimaryVertexProducer::PrimaryVertexProducer(const edm::ParameterSet& conf)
   } else if (trackSelectionAlgorithm == "filterWithThreshold") {
     theTrackFilter = new HITrackFilterForPVFinding(conf.getParameter<edm::ParameterSet>("TkFilterParameters"));
   } else {
-    throw VertexException("PrimaryVertexProducer: unknown track selection algorithm: " + trackSelectionAlgorithm);
+    throw VertexException("DisplacedVertexProducer: unknown track selection algorithm: " + trackSelectionAlgorithm);
   }
 
   // select and configure the track clusterizer
@@ -52,7 +55,7 @@ PrimaryVertexProducer::PrimaryVertexProducer(const edm::ParameterSet& conf)
   }
 
   else {
-    throw VertexException("PrimaryVertexProducer: unknown clustering algorithm: " + clusteringAlgorithm);
+    throw VertexException("DisplacedVertexProducer: unknown clustering algorithm: " + clusteringAlgorithm);
   }
 
   if (f4D) {
@@ -75,7 +78,7 @@ PrimaryVertexProducer::PrimaryVertexProducer(const edm::ParameterSet& conf)
       } else if (fitterAlgorithm == "AdaptiveVertexFitter") {
         algorithm.fitter = new AdaptiveVertexFitter(GeometricAnnealing(algoconf->getParameter<double>("chi2cutoff")));
       } else {
-        throw VertexException("PrimaryVertexProducer: unknown algorithm: " + fitterAlgorithm);
+        throw VertexException("DisplacedVertexProducer: unknown algorithm: " + fitterAlgorithm);
       }
       algorithm.label = algoconf->getParameter<std::string>("label");
       algorithm.minNdof = algoconf->getParameter<double>("minNdof");
@@ -97,7 +100,7 @@ PrimaryVertexProducer::PrimaryVertexProducer(const edm::ParameterSet& conf)
     } else if (fitterAlgorithm == "AdaptiveVertexFitter") {
       algorithm.fitter = new AdaptiveVertexFitter();
     } else {
-      throw VertexException("PrimaryVertexProducerAlgorithm: unknown algorithm: " + fitterAlgorithm);
+      throw VertexException("DisplacedVertexProducerAlgorithm: unknown algorithm: " + fitterAlgorithm);
     }
     algorithm.label = "";
     algorithm.minNdof = conf.getParameter<double>("minNdof");
@@ -115,17 +118,17 @@ PrimaryVertexProducer::PrimaryVertexProducer(const edm::ParameterSet& conf)
   fRecoveryIteration = conf.getParameter<bool>("isRecoveryIteration");
   if (fRecoveryIteration) {
     if (algorithms.empty()) {
-      throw VertexException("PrimaryVertexProducer: No algorithm specified. ");
+      throw VertexException("DisplacedVertexProducer: No algorithm specified. ");
     } else if (algorithms.size() > 1) {
       throw VertexException(
-          "PrimaryVertexProducer: Running in Recovery mode and more than one algorithm specified.  Please "
+          "DisplacedVertexProducer: Running in Recovery mode and more than one algorithm specified.  Please "
           "only one algorithm.");
     }
     recoveryVtxToken = consumes<reco::VertexCollection>(conf.getParameter<edm::InputTag>("recoveryVtxCollection"));
   }
 }
 
-PrimaryVertexProducer::~PrimaryVertexProducer() { //??
+DisplacedVertexProducer::~DisplacedVertexProducer() {
   if (theTrackFilter)
     delete theTrackFilter;
   if (theTrackClusterizer)
@@ -138,7 +141,7 @@ PrimaryVertexProducer::~PrimaryVertexProducer() { //??
   }
 }
 
-void PrimaryVertexProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
+void DisplacedVertexProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   // get the BeamSpot, it will always be needed, even when not used as a constraint
   reco::BeamSpot beamSpot;
   edm::Handle<reco::BeamSpot> recoBeamSpotHandle;
@@ -150,7 +153,7 @@ void PrimaryVertexProducer::produce(edm::Event& iEvent, const edm::EventSetup& i
   }
 
   bool validBS = true;
-  VertexState beamVertexState(beamSpot); //
+  VertexState beamVertexState(beamSpot);
   if ((beamVertexState.error().cxx() <= 0.) || (beamVertexState.error().cyy() <= 0.) ||
       (beamVertexState.error().czz() <= 0.)) {
     validBS = false;
@@ -192,7 +195,7 @@ void PrimaryVertexProducer::produce(edm::Event& iEvent, const edm::EventSetup& i
     t_tks = (*theB).build(tks, beamSpot);
   }
   if (fVerbose) {
-    std::cout << "RecoVertex/PrimaryVertexProducer"
+    std::cout << "RecoVertex/DisplacedVertexProducer"
               << "Found: " << t_tks.size() << " reconstructed tracks"
               << "\n";
   }
@@ -274,15 +277,15 @@ void PrimaryVertexProducer::produce(edm::Event& iEvent, const edm::EventSetup& i
     }  // end of cluster loop
 
     if (fVerbose) {
-      std::cout << "PrimaryVertexProducerAlgorithm::vertices  candidates =" << pvs.size() << std::endl;
+      std::cout << "DisplacedVertexProducerAlgorithm::vertices  candidates =" << pvs.size() << std::endl;
     }
 
     if (clusters.size() > 2 && clusters.size() > 2 * pvs.size())
-      edm::LogWarning("PrimaryVertexProducer")
+      edm::LogWarning("DisplacedVertexProducer")
           << "more than half of candidate vertices lost " << pvs.size() << ' ' << clusters.size();
 
     if (pvs.empty() && seltks.size() > 5)
-      edm::LogWarning("PrimaryVertexProducer")
+      edm::LogWarning("DisplacedVertexProducer")
           << "no vertex found with " << seltks.size() << " tracks and " << clusters.size() << " vertex-candidates";
 
     // sort vertices by pt**2  vertex (aka signal vertex tagging)
@@ -305,14 +308,14 @@ void PrimaryVertexProducer::produce(edm::Event& iEvent, const edm::EventSetup& i
         we(2, 2) = 10000;
         vColl.push_back(reco::Vertex(beamSpot.position(), we, 0., 0., 0));
         if (fVerbose) {
-          std::cout << "RecoVertex/PrimaryVertexProducer: "
+          std::cout << "RecoVertex/DisplacedVertexProducer: "
                     << "Beamspot with invalid errors " << bse.matrix() << std::endl;
           std::cout << "Will put Vertex derived from dummy-fake BeamSpot into Event.\n";
         }
       } else {
         vColl.push_back(reco::Vertex(beamSpot.position(), beamSpot.rotatedCovariance3D(), 0., 0., 0));
         if (fVerbose) {
-          std::cout << "RecoVertex/PrimaryVertexProducer: "
+          std::cout << "RecoVertex/DisplacedVertexProducer: "
                     << " will put Vertex derived from BeamSpot into Event.\n";
         }
       }
@@ -337,7 +340,7 @@ void PrimaryVertexProducer::produce(edm::Event& iEvent, const edm::EventSetup& i
   }
 }
 
-void PrimaryVertexProducer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+void DisplacedVertexProducer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   // offlinePrimaryVertices
   edm::ParameterSetDescription desc;
   {
@@ -402,8 +405,8 @@ void PrimaryVertexProducer::fillDescriptions(edm::ConfigurationDescriptions& des
   desc.add<bool>("isRecoveryIteration", false);
   desc.add<edm::InputTag>("recoveryVtxCollection", {""});
 
-  descriptions.add("primaryVertexProducer", desc);
+  descriptions.add("secondaryVertexProducer", desc);
 }
 
 //define this as a plug-in
-DEFINE_FWK_MODULE(PrimaryVertexProducer);
+DEFINE_FWK_MODULE(DisplacedVertexProducer);

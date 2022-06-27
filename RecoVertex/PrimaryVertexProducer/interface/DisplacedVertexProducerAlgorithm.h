@@ -1,11 +1,14 @@
+/////////////////////////   OBSOLETE    ///////////////////
+#ifndef PrimaryVertexProducerAlgorithm_H
+#define PrimaryVertexProducerAlgorithm_H
 // -*- C++ -*-
 //
-// Package:    PrimaryVertexProducer
-// Class:      PrimaryVertexProducer
+// Package:    PrimaryVertexProducerAlgorithm
+// Class:      PrimaryVertexProducerAlgorithm
 //
-/**\class PrimaryVertexProducer PrimaryVertexProducer.cc RecoVertex/PrimaryVertexProducer/src/PrimaryVertexProducer.cc
+/**\class PrimaryVertexProducerAlgorithm PrimaryVertexProducerAlgorithm.cc RecoVertex/PrimaryVertexProducerAlgorithm/src/PrimaryVertexProducerAlgorithm.cc
 
- Description: steers tracker primary vertex reconstruction and storage
+ Description: allow redoing the primary vertex reconstruction from a list of tracks, considered obsolete
 
  Implementation:
      <Notes on implementation>
@@ -21,53 +24,57 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/stream/EDProducer.h"
-
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/Utilities/interface/InputTag.h"
 
-#include "RecoVertex/PrimaryVertexProducer/interface/PrimaryVertexProducerAlgorithm.h"
+#include "RecoVertex/VertexPrimitives/interface/VertexReconstructor.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
-#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
-#include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/TrackFilterForPVFindingBase.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/TrackClusterizerInZ.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/DAClusterizerInZ_vect.h"
-#include "RecoVertex/PrimaryVertexProducer/interface/DAClusterizerInZT_vect.h"
+
 #include "RecoVertex/PrimaryVertexProducer/interface/TrackFilterForPVFinding.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/HITrackFilterForPVFinding.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/GapClusterizerInZ.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/DAClusterizerInZ.h"
 #include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
 #include "RecoVertex/AdaptiveVertexFit/interface/AdaptiveVertexFitter.h"
-#include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
+//#include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
 #include "RecoVertex/VertexPrimitives/interface/VertexException.h"
 #include <algorithm>
 #include "RecoVertex/PrimaryVertexProducer/interface/VertexHigherPtSquared.h"
 #include "RecoVertex/VertexTools/interface/VertexCompatibleWithBeam.h"
-#include "DataFormats/Common/interface/ValueMap.h"
+
 //
 // class declaration
 //
 
-class PrimaryVertexProducer : public edm::stream::EDProducer<> {
+class PrimaryVertexProducerAlgorithm : public VertexReconstructor {
 public:
-  PrimaryVertexProducer(const edm::ParameterSet&);
-  ~PrimaryVertexProducer() override;
+  explicit PrimaryVertexProducerAlgorithm(const edm::ParameterSet&);
+  ~PrimaryVertexProducerAlgorithm() override;
 
-  void produce(edm::Event&, const edm::EventSetup&) override;
+  // obsolete method
+  std::vector<TransientVertex> vertices(const std::vector<reco::TransientTrack>& tracks) const override;
 
-  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+  virtual std::vector<TransientVertex> vertices(const std::vector<reco::TransientTrack>& tracks,
+                                                const reco::BeamSpot& beamSpot,
+                                                const std::string& label = "") const;
+  /** Clone method
+   */
+  PrimaryVertexProducerAlgorithm* clone() const override { return new PrimaryVertexProducerAlgorithm(*this); }
 
   // access to config
   edm::ParameterSet config() const { return theConfig; }
+  edm::InputTag trackLabel;
+  edm::InputTag beamSpotLabel;
 
 private:
+  using VertexReconstructor::vertices;
   // ----------member data ---------------------------
-  const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> theTTBToken;
-
   TrackFilterForPVFindingBase* theTrackFilter;
   TrackClusterizerInZ* theTrackClusterizer;
 
@@ -84,14 +91,5 @@ private:
 
   edm::ParameterSet theConfig;
   bool fVerbose;
-
-  bool fRecoveryIteration;
-  edm::EDGetTokenT<reco::VertexCollection> recoveryVtxToken;
-
-  edm::EDGetTokenT<reco::BeamSpot> bsToken;
-  edm::EDGetTokenT<reco::TrackCollection> trkToken;
-  edm::EDGetTokenT<edm::ValueMap<float> > trkTimesToken;
-  edm::EDGetTokenT<edm::ValueMap<float> > trkTimeResosToken;
-
-  bool f4D;
 };
+#endif
