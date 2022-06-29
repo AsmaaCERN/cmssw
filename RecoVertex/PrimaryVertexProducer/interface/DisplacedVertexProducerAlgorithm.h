@@ -80,10 +80,10 @@ private:
 
   // vtx fitting algorithms
   struct algo {
-    VertexFitter<5>* fitter;
-    VertexCompatibleWithBeam* vertexSelector;
+    VertexFitter<5>* fitter; //5?? 
+    VertexCompatibleWithBeam* vertexSelector; //eventually delete
     std::string label;
-    bool useBeamConstraint;
+    bool useBeamConstraint; /
     double minNdof;
   };
 

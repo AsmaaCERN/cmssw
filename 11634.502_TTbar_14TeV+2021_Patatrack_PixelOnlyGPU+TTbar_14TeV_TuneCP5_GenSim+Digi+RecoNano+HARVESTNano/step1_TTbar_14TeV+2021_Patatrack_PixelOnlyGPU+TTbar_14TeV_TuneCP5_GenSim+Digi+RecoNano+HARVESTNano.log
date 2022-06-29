@@ -1,0 +1,25 @@
+GEN,SIM,ENDJOB
+We have determined that this is simulation (if not, rerun cmsDriver.py with --data)
+with DB:
+Traceback (most recent call last):
+  File "/cvmfs/cms.cern.ch/slc7_amd64_gcc10/cms/cmssw/CMSSW_12_4_0/bin/slc7_amd64_gcc10/cmsDriver.py", line 56, in <module>
+    run()
+  File "/cvmfs/cms.cern.ch/slc7_amd64_gcc10/cms/cmssw/CMSSW_12_4_0/bin/slc7_amd64_gcc10/cmsDriver.py", line 28, in run
+    configBuilder.prepare()
+  File "/cvmfs/cms.cern.ch/slc7_amd64_gcc10/cms/cmssw/CMSSW_12_4_0/python/Configuration/Applications/ConfigBuilder.py", line 2158, in prepare
+    self.loadAndRemember(self.EVTCONTDefaultCFF)  #load the event contents regardless
+  File "/cvmfs/cms.cern.ch/slc7_amd64_gcc10/cms/cmssw/CMSSW_12_4_0/python/Configuration/Applications/ConfigBuilder.py", line 331, in loadAndRemember
+    self.process.load(includeFile)
+  File "/afs/cern.ch/user/a/aalsubae/CMSSW_12_4_0/python/FWCore/ParameterSet/Config.py", line 722, in load
+    module = __import__(moduleName)
+  File "/cvmfs/cms.cern.ch/slc7_amd64_gcc10/cms/cmssw/CMSSW_12_4_0/python/Configuration/EventContent/EventContent_cff.py", line 64, in <module>
+    from RecoHGCal.Configuration.RecoHGCal_EventContent_cff import *
+  File "/afs/cern.ch/user/a/aalsubae/CMSSW_12_4_0/python/RecoHGCal/Configuration/RecoHGCal_EventContent_cff.py", line 3, in <module>
+    from RecoHGCal.TICL.iterativeTICL_cff import ticlIterLabelsMerge
+  File "/afs/cern.ch/user/a/aalsubae/CMSSW_12_4_0/python/RecoHGCal/TICL/iterativeTICL_cff.py", line 3, in <module>
+    from RecoHGCal.TICL.FastJetStep_cff import *
+  File "/afs/cern.ch/user/a/aalsubae/CMSSW_12_4_0/python/RecoHGCal/TICL/FastJetStep_cff.py", line 3, in <module>
+    from RecoHGCal.TICL.TICLSeedingRegions_cff import ticlSeedingGlobal, ticlSeedingGlobalHFNose
+  File "/afs/cern.ch/user/a/aalsubae/CMSSW_12_4_0/python/RecoHGCal/TICL/TICLSeedingRegions_cff.py", line 3, in <module>
+    from RecoHGCal.TICL.ticlSeedingRegionProducer_cfi import ticlSeedingRegionProducer as _ticlSeedingRegionProducer
+ModuleNotFoundError: No module named 'RecoHGCal.TICL.ticlSeedingRegionProducer_cfi'

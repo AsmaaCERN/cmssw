@@ -42,7 +42,7 @@ vector<DAClusterizerInZ::track_t> DAClusterizerInZ::fill(const vector<reco::Tran
 double DAClusterizerInZ::Eik(const track_t& t, const vertex_t& k) const { return pow(t.z - k.z, 2) / t.dz2; }
 
 double DAClusterizerInZ::update(double beta, vector<track_t>& tks, vector<vertex_t>& y) const {
-  //update weights and vertex positions
+  // update weights and vertex positions
   // mass constrained annealing without noise
   // returns the squared sum of changes of vertex positions
 
