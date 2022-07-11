@@ -10,9 +10,9 @@
 
 #include "gpuVertexFinder.h"
 
-namespace gpuVertexFitter3D {
+namespace gpuVertexFinder {
 
-  __device__ __forceinline__ void fitVertices(ZVertices* pdata,
+  __device__ __forceinline__ void fitVertices3D(ZVertices* pdata,
                                               WorkSpace* pws,
                                               float chi2Max  // for outlier rejection
   ) {
@@ -101,7 +101,7 @@ namespace gpuVertexFitter3D {
       printf("and %d noise\n", noise);
   }
 
-  __global__ void fitVerticesKernel(ZVertices* pdata,
+  __global__ void fitVerticesKernel3D(ZVertices* pdata,
                                     WorkSpace* pws,
                                     float chi2Max  // for outlier rejection
   ) {

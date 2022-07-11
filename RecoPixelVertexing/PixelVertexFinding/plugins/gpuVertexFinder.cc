@@ -6,6 +6,7 @@
 #include "gpuFitVertices.h"
 #include "gpuSortByPt2.h"
 #include "gpuSplitVertices.h"
+#include "gpuFitVertices3D.h"
 
 #undef PIXVERTEX_DEBUG_PRODUCE
 
@@ -270,10 +271,10 @@ namespace gpuVertexFinder {
 #ifdef PIXVERTEX_DEBUG_PRODUCE
     std::cout << "found " << (*ws_d).nvIntermediate << " vertices " << std::endl;
 #endif  // PIXVERTEX_DEBUG_PRODUCE
-    fitVertices(soa, ws_d.get(), maxChi2ForFirstFit);
+    fitVertices3D(soa, ws_d.get(), maxChi2ForFirstFit);
     // one block per vertex!
     splitVertices(soa, ws_d.get(), maxChi2ForSplit);
-    fitVertices(soa, ws_d.get(), maxChi2ForFinalFit);
+    fitVertices3D(soa, ws_d.get(), maxChi2ForFinalFit);
     sortByPt2(soa, ws_d.get());
 #endif
 
