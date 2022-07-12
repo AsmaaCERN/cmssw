@@ -105,6 +105,7 @@ namespace gpuVertexFinder {
                                     WorkSpace* pws,
                                     float chi2Max  // for outlier rejection
   ) {
+    printf("[gpuFitVertices3D] running 3D vertex fitting function"); 
     fitVertices(pdata, pws, chi2Max);
   }
 
