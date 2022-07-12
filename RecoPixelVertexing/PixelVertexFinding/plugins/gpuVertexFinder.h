@@ -67,6 +67,9 @@ namespace gpuVertexFinder {
     ZVertexHeterogeneous makeAsync(cudaStream_t stream, TkSoA const* tksoa, float ptMin, float ptMax) const;
     ZVertexHeterogeneous make(TkSoA const* tksoa, float ptMin, float ptMax) const;
 
+    ZVertexHeterogeneous testVertexFit3D(TkSoA const* tksoa, float ptMin, float ptMax) const; 
+    ZVertexHeterogeneous testVertexFit3DAsync(cudaStream_t stream, TkSoA const* tksoa, float ptMin, float ptMax) const;
+
   private:
     const bool oneKernel_;
     const bool useDensity_;
