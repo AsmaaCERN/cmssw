@@ -1,0 +1,11 @@
+<use name="FWCore/Framework"/>
+<use name="FWCore/PluginManager"/>
+<use name="FWCore/ParameterSet"/>
+<use name="CUDADataFormats/Track"/>
+<use name="CUDADataFormats/Vertex"/>
+<use name="DataFormats/lowPtTauGPU"/>
+<use name="TrackingTools/TransientTrack"/>
+<use name="TrackingTools/TransientVertex"/>
+<use name="RecoVertex/VertexPrimitives"/>
+<use name="DataFormats/Candidate"/>
+<flags EDM_PLUGIN="1"/>
