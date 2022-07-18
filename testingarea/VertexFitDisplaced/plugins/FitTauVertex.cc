@@ -91,11 +91,12 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 
 
 	  std::vector<int> matchedCandidate; 
-  	  std::vector<std::vector<TLorentzVector>> generatedTauPions;
+  	  std::vector<std::vector<TLorentzVector> > generatedTauPions;
+  	  std::vector<ROOT::Math::XYZPoint> genTauDecayVertices; 
 
 
 	  // extremely basic definition of vertex
-	  std::vector<std::vector<uint32_t> > vertices; // We just store a vector of track indiced that are par of the vertex for each event
+	  std::vector<std::vector<uint32_t> > vertices; // We just store a vector of track indiced that are part of the vertex for each event
 
 
 
@@ -306,6 +307,8 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 				{
 					std::cout << "pi vertex: " << vertex << std::endl; 
 				}
+
+				genTauDecayVertices.push_back(genVertices.at(0)); 
 
 				//assert(genVertices.at(0) == genVertices.at(1)); 
 			}
