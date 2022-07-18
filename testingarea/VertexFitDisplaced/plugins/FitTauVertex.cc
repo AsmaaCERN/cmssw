@@ -189,6 +189,8 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    iEvent.getByToken(vtxToken, pixelVertices); 
 
    std::vector<uint32_t> trackCandidates; 
+
+   generatedTauPions.clear(); // Empty the collection for each event 
    
 
    const auto& vertexsoa = *(iEvent.get(vtxToken).get());
@@ -226,7 +228,28 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	 dydz = bs.dydz();
    }*/
 
-   vertices.clear(); // empty the collection for the new event 
+   	vertices.clear(); // empty the collection for the new event 
+
+   	
+   	/*edm::Handle<edm:: HepMCProduct > genEvtHandle;
+	event.getByLabel( "generator", genEvtHandle) ;
+	const HepMC::GenEvent* Evt = genEvtHandle->GetEvent() ;
+	//
+	// this is an example loop over the hierarchy of vertices
+	//
+	for ( HepMC::GenEvent::vertex_const_iterator
+	          itVtx=Evt->vertices_begin(); itVtx!=Evt->vertices_end(); ++itVtx )
+	{
+	      //
+	      // this is an example loop over particles coming out of each vertex in the loop
+	      //
+	      for ( HepMC::GenVertex::particles_out_const_iterator
+	              itPartOut=(*itVtx)->particles_out_const_begin();
+	              itPartOut!=(*itVtx)->particles_out_const_end(); ++itPartOut )
+	      {
+	         itPartOut->Print(); 
+	      }
+	}*/
 
 
    // Gen matching 
@@ -237,20 +260,25 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 		for( unsigned p=0; p < genParticles->size(); ++p)
 		{
+			auto genParticle = (*genParticles)[p]; 
 
-			if(TMath::Abs((*genParticles)[p].pdgId())!=15) continue;
-			if(TMath::Abs((*genParticles)[p].status())!=2) continue;
+			if(TMath::Abs(genParticle.pdgId())!=15) continue;
+			if(TMath::Abs(genParticle.status())!=2) continue;
 
-			if (verbosity >= 3) std::cout << "\t Tau found with # of daughters = " << (*genParticles)[p].numberOfDaughters() << " with mother = " << (*genParticles)[p].mother(0)->pdgId() << std::endl;
+			if (verbosity >= 3) std::cout << "\t Tau found with # of daughters = " << genParticle.numberOfDaughters() << " with mother = " << genParticle.mother(0)->pdgId() << std::endl;
 
 			std::vector<TLorentzVector> gp;
 			std::vector<Int_t> matchedTrackIdx; 
+			std::vector<ROOT::Math::XYZPoint> genVertices; 
+			auto tauVertex = genParticle.vertex(); 
 	  //      Bool_t matched = true;
+			//std::cout << "Tau vertex z: " << (*genParticles)[p].vz() << std::endl; 
 
 			for( unsigned int d=0; d < (*genParticles)[p].numberOfDaughters(); ++d )
 			{
+				auto daughter = (*genParticles)[p].daughter(d);
 
-				Int_t taupdgId = (*genParticles)[p].daughter(d)->pdgId();
+				Int_t taupdgId = daughter->pdgId();
 
 				if (verbosity >= 3) std::cout << "\t\t --> tau decay:" << taupdgId << std::endl;
 
@@ -258,18 +286,28 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 				TLorentzVector tlv_gen_pion;
 
-				tlv_gen_pion.SetPtEtaPhiM((*genParticles)[p].daughter(d)->pt(),
-					(*genParticles)[p].daughter(d)->eta(),
-					(*genParticles)[p].daughter(d)->phi(),
-					(*genParticles)[p].daughter(d)->mass());
+				tlv_gen_pion.SetPtEtaPhiM(daughter->pt(),
+					daughter->eta(),
+					daughter->phi(),
+					daughter->mass());
 
 				gp.push_back(tlv_gen_pion);
+				genVertices.push_back(daughter->vertex()); 
+				//assert((*genParticles)[p].daughter(d)->vertex() == tauVertex); 
+				if ((*genParticles)[p].daughter(d)->vertex() == tauVertex) continue; 
 
 			}
 
 			if(gp.size()==3)
 			{
 				generatedTauPions.push_back(gp); // This collection will contain the pions (tracks) that are matched to a daughter of a generated tau 
+				std::cout << "Tau vertex: " << tauVertex << std::endl; 
+				for (auto vertex : genVertices) 
+				{
+					std::cout << "pi vertex: " << vertex << std::endl; 
+				}
+
+				//assert(genVertices.at(0) == genVertices.at(1)); 
 			}
 		}
 		if (verbosity >= 2) std::cout << "\t # of gen. taus with 3prong = " << generatedTauPions.size() << std::endl;
@@ -377,7 +415,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 					    // Matching output 
 					    if (isRight or oneIsRight or twoAreRight) 
 					    {
-					    	std::cout << "Tau with: " << (isRight ? 3 : (twoAreRight ? 2 : (oneIsRight ? 1 : 0))) << " matched pion(s). " << std::endl; 
+					    	//std::cout << "Tau with: " << (isRight ? 3 : (twoAreRight ? 2 : (oneIsRight ? 1 : 0))) << " matched pion(s). " << std::endl; 
 					    }
 					}	
 				}
