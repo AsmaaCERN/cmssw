@@ -44,7 +44,12 @@
 #include <TTree.h>
 #include <TFile.h>
 
-
+#include "RecoPixelVertexing/PixelTrackFitting/interface/BrokenLine.h" // karimaki translate
+#include "RecoPixelVertexing/PixelTrackFitting/interface/FitResult.h" //circle fit
+#include "CUDADataFormats/Track/interface/TrackSoAHeterogeneousT.h" //state at beam spot
+#include <Eigen/Core> //matrices
+#include <Eigen/Eigenvalues> //matrices
+#include "HeterogeneousCore/CUDAUtilities/interface/eigenSoA.h"
 
 //
 // class declaration
@@ -214,17 +219,17 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    //beamSpot
    edm::Handle<reco::BeamSpot> beampspotHandle;
    iEvent.getByToken(bsToken, beampspotHandle);
-   /*float x0 = 0., y0 = 0., z0 = 0., dxdz = 0., dydz = 0.;
+   float x0 = 0., y0 = 0., z0 = 0., dxdz = 0., dydz = 0.;
    if (!beampspotHandle.isValid()) {
 	 edm::LogWarning("SiPixelValidateVerticesFromSoA") << "No beamspot found. returning vertexes with (0,0,Z) ";
    } else {
 	 const reco::BeamSpot &bs = *beampspotHandle;
 	 x0 = bs.x0();
-	 y0 = bs.y0();
+	 y0 = bs.y0(); 
 	 z0 = bs.z0();
 	 dxdz = bs.dxdz();
 	 dydz = bs.dydz();
-   }*/
+   }
 
    vertices.clear(); // empty the collection for the new event 
 
@@ -277,6 +282,16 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 
 
+	riemannFit::Matrix3d jacobian;
+	double xt, yt; // x translate, y translate, sth small ~0.2 for now but later vertex 
+	double R;
+	riemannFit::CircleFit karimakiCircle;
+	xt = 0.2;
+	yt = 0.2;
+	const double bField = 3.8;
+	const double b = 1/bField;
+	riemannFit::LineFit karimakiLine;
+
 	for (uint32_t iTk=0; iTk<maxNumTracks; iTk++) // put here vertexsoa.MAXTRACKS ? 
 	{
 		auto nHits = tracksoa.nHits(iTk); 
@@ -295,13 +310,44 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 		if (tracksoa.chi2(iTk) > 100) continue; 
 
-		if (tracksoa.nHits(iTk) < 3) continue; 
-
-
+		if (tracksoa.nHits(iTk) < 3) continue;
 
 		trackCandidates.push_back(iTk); 
 
-	}  
+		R = tracksoa.charge(iTk) / (TMath::Abs(tracksoa.charge(iTk)) * bField)   ; // F=mv^2/r=qvB => r = pt/qB
+		karimakiCircle.par(0) = x0; 
+		karimakiCircle.par(1) = y0; 
+		karimakiCircle.par(2) = R;
+
+	    /*!< circle covariance matrix: \n
+        |cov(X0,X0)|cov(Y0,X0)|cov( R,X0)| \n
+        |cov(X0,Y0)|cov(Y0,Y0)|cov( R,Y0)| \n
+        |cov(X0, R)|cov(Y0, R)|cov( R, R)|
+        */
+		karimakiCircle.cov(0,0) = tracksoa.stateAtBS.covariance(iTk)(0); 
+		karimakiCircle.cov(0,1) = tracksoa.stateAtBS.covariance(iTk)(1); 
+		karimakiCircle.cov(0,2) = tracksoa.stateAtBS.covariance(iTk)(2) / b; 
+		karimakiCircle.cov(1,0) = karimakiCircle.cov(0,1);
+		karimakiCircle.cov(1,1) = tracksoa.stateAtBS.covariance(iTk)(5);
+		karimakiCircle.cov(1,2) = tracksoa.stateAtBS.covariance(iTk)(6) / b;
+		karimakiCircle.cov(2,0) = karimakiCircle.cov(0,2);
+		karimakiCircle.cov(2,1) = karimakiCircle.cov(1,2);
+		karimakiCircle.cov(2,2) = tracksoa.stateAtBS.covariance(iTk)(9) / (b * b);
+		
+		karimakiLine.par(0) = tracksoa.stateAtBS.state(iTk)(4); //cotan theta
+		karimakiLine.par(1) = tracksoa.stateAtBS.state(iTk)(4); //zip
+
+		/*!< line covariance matrix: \n
+        |cov(c_t,c_t)|cov(Zip,c_t)| \n
+        |cov(c_t,Zip)|cov(Zip,Zip)|
+        */
+		karimakiLine.cov(0,0) = tracksoa.stateAtBS.covariance(iTk)(12);//cov(cotan(theta),cotan(theta))
+		karimakiLine.cov(0,1) = tracksoa.stateAtBS.covariance(iTk)(13);
+		karimakiLine.cov(1,0) = karimakiLine.cov(0,1); 
+		karimakiLine.cov(1,1) = tracksoa.stateAtBS.covariance(iTk)(14);
+		
+		}
+	 
 
 	// We need at least 3 tracks to form a tauh candidate 
 	if (trackCandidates.size() < 3) return; 
@@ -324,7 +370,6 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 				trkIdxk = trackCandidates.at(k); 
 				Int_t tauCharge = tracksoa.charge(trkIdxi) + tracksoa.charge(trkIdxj) + tracksoa.charge(trkIdxk); 
 				//std::cout << "Tau candidate charge: " << tauCharge << std::endl; 
-
 				if (TMath::Abs(tauCharge) != 1) continue; 
 
 				TLorentzVector pi1, pi2, pi3; 
@@ -405,6 +450,62 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    
  
 }
+
+/*
+//copyFromCircle(cp,ccov, lp, lcov, b, i);
+
+//translateKarimaki(karimaki_circle_fit& circle, double x0, double y0, riemannFit::Matrix3d& jacobian)
+void karimakiParams(const double bField){
+	uint32_t maxNumTracks = tracksoa.stride();
+	riemannFit::Matrix3d& jacobian;
+	double xt, yt; // x translate, y translate, sth small ~0.2 for now but later vertex 
+	double R;
+	CircleFit karimakiCircle;
+	xt = 0.2;
+	yt = 0.2;
+
+	for (uint32_t iTk=0; iTk<maxNumTracks; iTk++) // put here vertexsoa.MAXTRACKS ? 
+		{
+			auto nHits = tracksoa.nHits(iTk); 
+			if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
+			// Selection 
+			auto pt = tracksoa.pt(iTk); 
+			// Here this is a selection, to be replaced, but I leave it as an example of how to access the quantities 		
+			if (pt < 0.5) continue; 
+			if (TMath::Abs(tracksoa.eta(iTk)) > 2.3) continue; 
+			if (TMath::Abs(tracksoa.charge(iTk)) != 1) continue;  // Instead of pdgId 
+			if (tracksoa.chi2(iTk) > 100) continue; 
+			if (tracksoa.nHits(iTk) < 3) continue; 
+			trackCandidates.push_back(iTk); 
+
+			R = tracksoa.charge(iTk) / (TMath::Abs(tracksoa.charge(iTk)) * bField)   ; // r = pt/qB
+			karimakiCircle.par(0) = x0; // assuming lines 227-228 work 
+			karimakiCircle.par(1) = y0; // assuming lines 227-228 work 
+			karimakiCircle.par(2) = R;
+
+			karimakiCircle.cov(0,0) = tracksoa.stateAtBS(iTk).cov(0); //cov(x0,x0), cov = E[XY]-E[Y]E[X]
+			karimakiCircle.cov(0,1) = //cov(y0,x0)
+			karimakiCircle.cov(0,2) = //cov(R,x0)
+			karimakiCircle.cov(1,0) = //cov(x0,y0)
+			karimakiCircle.cov(1,1) = //cov(y0,y0)
+			karimakiCircle.cov(1,2) = //cov(R,y0)
+			karimakiCircle.cov(2,0) = //cov(x0,R)
+			karimakiCircle.cov(2,1) = //cov(y0,R)
+			karimakiCircle.cov(2,2) = //cov(R,R)
+		}
+
+	//translateKarimaki(karimakiCircle, xt, yt, jacobian); //type circle TODO
+}
+	// LINEFIT
+	LineFit karimakiLine
+	karimakiLine.par(0) = //cotan theta
+	karimakiLine.par(1) = tracksoa.zip(iTK);
+
+	karimakiLine.cov(0,0) = //cov(cotan(theta),cotan(theta))
+	karimakiLine.cov(0,1) = 
+	karimakiLine.cov(1,0) = 
+	karimakiLine.cov(1,1) = 
+*/
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void
