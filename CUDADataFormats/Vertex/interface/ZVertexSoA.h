@@ -12,15 +12,8 @@ struct ZVertexSoA {
   static constexpr uint32_t MAXVTX = 1024;
 
   int16_t idv[MAXTRACKS];    // vertex index for each associated (original) track  (-1 == not associate)
-  float zv[MAXVTX];          // output z-position of found vertices
+  float zv[MAXVTX];          // output z-posistion of found vertices
   float wv[MAXVTX];          // output weight (1/error^2) on the above
-
-  float xv[MAXVTX];          // output x-position of found vertices
-  float wvx[MAXVTX];         // output weight (1/error^2) on the above
-
-  float yv[MAXVTX];          // output y-position of found vertices
-  float wvy[MAXVTX];         // output weight (1/error^2) on the above
-
   float chi2[MAXVTX];        // vertices chi2
   float ptv2[MAXVTX];        // vertices pt^2
   int32_t ndof[MAXTRACKS];   // vertices number of dof (reused as workspace for the number of nearest neighbours FIXME)
