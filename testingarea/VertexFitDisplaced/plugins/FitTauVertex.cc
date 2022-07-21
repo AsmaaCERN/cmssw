@@ -332,9 +332,10 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	const double bField = 3.8;
 	const double b = 1/bField;
 	riemannFit::LineFit karimakiLine;
-
+	// std::ofstream file("jacobian1.csv");
 	for (uint32_t iTk=0; iTk<maxNumTracks; iTk++) // put here vertexsoa.MAXTRACKS ? 
 	{
+		jacobian << 0,0,0,0,0,0,0,0,0;
 		auto nHits = tracksoa.nHits(iTk); 
 		if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
 	  
@@ -386,8 +387,13 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 		karimakiLine.cov(0,1) = tracksoa.stateAtBS.covariance(iTk)(13);
 		karimakiLine.cov(1,0) = karimakiLine.cov(0,1); 
 		karimakiLine.cov(1,1) = tracksoa.stateAtBS.covariance(iTk)(14);
-		
+		std::cout << " *PRE* jacobian " << iTk << ":" << jacobian << std::endl;
+
+		brokenline::translateKarimaki(karimakiCircle, xt, yt, jacobian);
+		//file << jacobian << "\n\n" ;
+		std::cout << "jacobian " << iTk << ":" << jacobian << std::endl;
 		}
+		//file.close();
 	 
 
 	// We need at least 3 tracks to form a tauh candidate 
