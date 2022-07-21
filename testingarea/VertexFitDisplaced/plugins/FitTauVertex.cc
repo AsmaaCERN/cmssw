@@ -451,62 +451,6 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
  
 }
 
-/*
-//copyFromCircle(cp,ccov, lp, lcov, b, i);
-
-//translateKarimaki(karimaki_circle_fit& circle, double x0, double y0, riemannFit::Matrix3d& jacobian)
-void karimakiParams(const double bField){
-	uint32_t maxNumTracks = tracksoa.stride();
-	riemannFit::Matrix3d& jacobian;
-	double xt, yt; // x translate, y translate, sth small ~0.2 for now but later vertex 
-	double R;
-	CircleFit karimakiCircle;
-	xt = 0.2;
-	yt = 0.2;
-
-	for (uint32_t iTk=0; iTk<maxNumTracks; iTk++) // put here vertexsoa.MAXTRACKS ? 
-		{
-			auto nHits = tracksoa.nHits(iTk); 
-			if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
-			// Selection 
-			auto pt = tracksoa.pt(iTk); 
-			// Here this is a selection, to be replaced, but I leave it as an example of how to access the quantities 		
-			if (pt < 0.5) continue; 
-			if (TMath::Abs(tracksoa.eta(iTk)) > 2.3) continue; 
-			if (TMath::Abs(tracksoa.charge(iTk)) != 1) continue;  // Instead of pdgId 
-			if (tracksoa.chi2(iTk) > 100) continue; 
-			if (tracksoa.nHits(iTk) < 3) continue; 
-			trackCandidates.push_back(iTk); 
-
-			R = tracksoa.charge(iTk) / (TMath::Abs(tracksoa.charge(iTk)) * bField)   ; // r = pt/qB
-			karimakiCircle.par(0) = x0; // assuming lines 227-228 work 
-			karimakiCircle.par(1) = y0; // assuming lines 227-228 work 
-			karimakiCircle.par(2) = R;
-
-			karimakiCircle.cov(0,0) = tracksoa.stateAtBS(iTk).cov(0); //cov(x0,x0), cov = E[XY]-E[Y]E[X]
-			karimakiCircle.cov(0,1) = //cov(y0,x0)
-			karimakiCircle.cov(0,2) = //cov(R,x0)
-			karimakiCircle.cov(1,0) = //cov(x0,y0)
-			karimakiCircle.cov(1,1) = //cov(y0,y0)
-			karimakiCircle.cov(1,2) = //cov(R,y0)
-			karimakiCircle.cov(2,0) = //cov(x0,R)
-			karimakiCircle.cov(2,1) = //cov(y0,R)
-			karimakiCircle.cov(2,2) = //cov(R,R)
-		}
-
-	//translateKarimaki(karimakiCircle, xt, yt, jacobian); //type circle TODO
-}
-	// LINEFIT
-	LineFit karimakiLine
-	karimakiLine.par(0) = //cotan theta
-	karimakiLine.par(1) = tracksoa.zip(iTK);
-
-	karimakiLine.cov(0,0) = //cov(cotan(theta),cotan(theta))
-	karimakiLine.cov(0,1) = 
-	karimakiLine.cov(1,0) = 
-	karimakiLine.cov(1,1) = 
-*/
-
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void
 FitTauVertex::beginStream(edm::StreamID)
