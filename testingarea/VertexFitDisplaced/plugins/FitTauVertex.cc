@@ -323,18 +323,19 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 
 
-	riemannFit::Matrix3d jacobian;
 	double xt, yt; // x translate, y translate, sth small ~0.2 for now but later vertex 
 	double R;
-	riemannFit::CircleFit karimakiCircle;
 	xt = 0.2;
 	yt = 0.2;
 	const double bField = 3.8;
 	const double b = 1/bField;
-	riemannFit::LineFit karimakiLine;
 	// std::ofstream file("jacobian1.csv");
 	for (uint32_t iTk=0; iTk<maxNumTracks; iTk++) // put here vertexsoa.MAXTRACKS ? 
 	{
+		riemannFit::LineFit karimakiLine;
+		riemannFit::CircleFit karimakiCircle;
+		riemannFit::Matrix3d jacobian;
+
 		jacobian << 0,0,0,0,0,0,0,0,0;
 		auto nHits = tracksoa.nHits(iTk); 
 		if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
@@ -356,7 +357,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 		trackCandidates.push_back(iTk); 
 
-		R = tracksoa.charge(iTk) / (TMath::Abs(tracksoa.charge(iTk)) * bField)   ; // F=mv^2/r=qvB => r = pt/qB
+		R = tracksoa.pt(iTk) / (tracksoa.charge(iTk) * bField)   ; // F=mv^2/r=qvB => r = pt/qB
 		karimakiCircle.par(0) = x0; 
 		karimakiCircle.par(1) = y0; 
 		karimakiCircle.par(2) = R;
