@@ -23,8 +23,16 @@ namespace gpuVertexFinder {
     auto nt = ws.ntrks;
     float const* __restrict__ zt = ws.zt;
     float const* __restrict__ ezt2 = ws.ezt2;
+
     float* __restrict__ zv = data.zv;
     float* __restrict__ wv = data.wv;
+    
+    float* __restrict__ xv = data.xv;
+    float* __restrict__ wvx = data.wvx;
+
+    float* __restrict__ yv = data.yv;
+    float* __restrict__ wvy = data.wvy;
+    
     float* __restrict__ chi2 = data.chi2;
     uint32_t& nvFinal = data.nvFinal;
     uint32_t& nvIntermediate = ws.nvIntermediate;
@@ -34,6 +42,9 @@ namespace gpuVertexFinder {
 
     assert(pdata);
     assert(zt);
+    assert(xt);
+    assert(yt);
+
 
     assert(nvFinal <= nvIntermediate);
     nvFinal = nvIntermediate;
@@ -43,6 +54,10 @@ namespace gpuVertexFinder {
     for (auto i = threadIdx.x; i < foundClusters; i += blockDim.x) {
       zv[i] = 0;
       wv[i] = 0;
+      xv[i] = 0;
+      wvx[i] = 0;
+      uv[i] = 0;
+      wvy[i] = 0;
       chi2[i] = 0;
     }
 
@@ -72,6 +87,8 @@ namespace gpuVertexFinder {
     for (auto i = threadIdx.x; i < foundClusters; i += blockDim.x) {
       assert(wv[i] > 0.f);
       zv[i] /= wv[i];
+      xv[i] /= wvx[i];
+      yv[i] /= wvy[i];
       nn[i] = -1;  // ndof
     }
     __syncthreads();
@@ -81,8 +98,26 @@ namespace gpuVertexFinder {
       if (iv[i] > 9990)
         continue;
 
-      auto c2 = zv[iv[i]] - zt[i];
-      c2 *= c2 / ezt2[i];
+      auto c2 = zv[iv[i]] - zt[i];  // output z position of the vertex index - input z position of track 
+      c2 *= c2 / ezt2[i]; // ez2 input 
+      if (c2 > chi2Max) {
+        iv[i] = 9999;
+        continue;
+      }
+      if (iv[i] > 9990)
+        continue;
+
+      auto c2 = xv[iv[i]] - xt[i];  // output x position of the vertex index - input x position of track 
+      c2 *= c2 / ext2[i]; // ex2 input 
+      if (c2 > chi2Max) {
+        iv[i] = 9999;
+        continue;
+      }
+      if (iv[i] > 9990)
+        continue;
+
+      auto c2 = yv[iv[i]] - yt[i];  // output y position of the vertex index - input y position of track 
+      c2 *= c2 / eyt2[i]; // ey2 input 
       if (c2 > chi2Max) {
         iv[i] = 9999;
         continue;

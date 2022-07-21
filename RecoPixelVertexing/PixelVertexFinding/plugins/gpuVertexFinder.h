@@ -22,7 +22,16 @@ namespace gpuVertexFinder {
     float zt[MAXTRACKS];       // input track z at bs
     float ezt2[MAXTRACKS];     // input error^2 on the above
     float ptt2[MAXTRACKS];     // input pt^2 on the above
+
+    float yt[MAXTRACKS];       // input track y
+    float eyt2[MAXTRACKS];     // input error^2 on the above
+
+    float xt[MAXTRACKS];       // input track x
+    float ext2[MAXTRACKS];     // input error^2 on the above
+
     uint8_t izt[MAXTRACKS];    // interized z-position of input tracks
+    uint8_t ixt[MAXTRACKS];    // interized x-position of input tracks
+    uint8_t iyt[MAXTRACKS];    // interized y-position of input tracks
     int32_t iv[MAXTRACKS];     // vertex index for each associated track
 
     uint32_t nvIntermediate;  // the number of vertices after splitting pruning etc.
@@ -40,8 +49,8 @@ namespace gpuVertexFinder {
 
   class Producer {
   public:
-    using ZVertices = ZVertexSoA;
-    using WorkSpace = gpuVertexFinder::WorkSpace;
+    using ZVertices = ZVertexSoA; 
+    using WorkSpace = gpuVertexFinder::WorkSpace; 
     using TkSoA = pixelTrack::TrackSoA;
 
     Producer(bool oneKernel,

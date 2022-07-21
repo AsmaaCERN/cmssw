@@ -53,6 +53,8 @@ namespace gpuVertexFinder {
       data.zt[it] = tracks.zip(idx);
       data.ezt2[it] = fit.covariance(idx)(14);
       data.ptt2[it] = pt * pt;
+      // data.xt[it] = ??
+      // data.yt[it] = ??
     }
   }
 
