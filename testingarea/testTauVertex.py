@@ -33,7 +33,8 @@ process.maxEvents = cms.untracked.PSet(
 # Input source
 import FilesBtoDstarTauNuRun3
 process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring('file:/afs/cern.ch/work/a/adiflori/public/forMark/step2_1.root'), # file:step2.root
+    fileNames = cms.untracked.vstring(FilesBtoDstarTauNuRun3.FILES), # file:step2.root
+    #fileNames = cms.untracked.vstring('file:/afs/cern.ch/work/a/adiflori/public/forMark/step2_1.root'), # file:step2.root
     secondaryFileNames = cms.untracked.vstring()
 )
 
