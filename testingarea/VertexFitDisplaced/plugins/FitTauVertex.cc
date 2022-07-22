@@ -43,6 +43,8 @@
 #include "DataFormats/Math/interface/deltaR.h"
 #include <TTree.h>
 #include <TFile.h>
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "CommonTools/UtilAlgos/interface/TFileService.h"
 
 
 
@@ -93,6 +95,11 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 	  std::vector<int> matchedCandidate; 
   	  std::vector<std::vector<TLorentzVector> > generatedTauPions;
   	  std::vector<ROOT::Math::XYZPoint> genTauDecayVertices; 
+  	  std::vector<TLorentzVector> generatedTaus;
+  	  std::vector<int> genIndices; 
+
+  	  TTree *tree = nullptr; 
+  	  Float_t tau_pt=0, tau_eta = 0, tau_phi = 0, pi1_pt = 0, pi1_eta = 0, pi1_phi = 0, pi2_pt = 0, pi2_eta = 0, pi2_phi = 0, pi3_pt = 0, pi3_eta = 0, pi3_phi = 0; 
 
 
 	  // extremely basic definition of vertex
@@ -127,6 +134,15 @@ FitTauVertex::FitTauVertex(const edm::ParameterSet& iConfig)
 	}
 
 	verbosity = 2; 
+
+
+	edm::Service<TFileService> fs;
+
+	tree = fs->make<TTree>("tree", "tree"); 
+
+	tree->Branch("tau_pt", &tau_pt); 
+	tree->Branch("tau_eta", &tau_eta); 
+	tree->Branch("tau_phi", &tau_phi); 
    //register your products
 /* Examples
    produces<ExampleData2>();
@@ -192,6 +208,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    std::vector<uint32_t> trackCandidates; 
 
    generatedTauPions.clear(); // Empty the collection for each event 
+   generatedTaus.clear(); 
    
 
    const auto& vertexsoa = *(iEvent.get(vtxToken).get());
@@ -230,6 +247,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    }*/
 
    	vertices.clear(); // empty the collection for the new event 
+   	genIndices.clear(); 
 
    	
    	/*edm::Handle<edm:: HepMCProduct > genEvtHandle;
@@ -265,6 +283,9 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 			if(TMath::Abs(genParticle.pdgId())!=15) continue;
 			if(TMath::Abs(genParticle.status())!=2) continue;
+
+			TLorentzVector tauVec; 
+			tauVec.SetPtEtaPhiM(genParticle.pt(), genParticle.eta(), genParticle.phi(), genParticle.mass()); 
 
 			if (verbosity >= 3) std::cout << "\t Tau found with # of daughters = " << genParticle.numberOfDaughters() << " with mother = " << genParticle.mother(0)->pdgId() << std::endl;
 
@@ -309,6 +330,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 				}
 
 				genTauDecayVertices.push_back(genVertices.at(0)); 
+				generatedTaus.push_back(tauVec); 
 
 				//assert(genVertices.at(0) == genVertices.at(1)); 
 			}
@@ -328,7 +350,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	  	auto pt = tracksoa.pt(iTk); 
 
 	  	// Here this is a selection, to be replaced, but I leave it as an example of how to access the quantities 		
-		if (pt < 0.5) continue; 
+		/*if (pt < 0.5) continue; 
 
 		if (TMath::Abs(tracksoa.eta(iTk)) > 2.3) continue; 
 
@@ -336,7 +358,8 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 		if (tracksoa.chi2(iTk) > 100) continue; 
 
-		if (tracksoa.nHits(iTk) < 3) continue; 
+		if (tracksoa.nHits(iTk) < 3) continue; */
+		
 
 
 
@@ -383,6 +406,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 				Bool_t oneIsRight = false; 
 				Bool_t twoAreRight = false; 
 				Int_t pid = -999;
+				Bool_t matched = false; 
 				if (isMC) 
 				{
 
@@ -393,7 +417,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 					    Bool_t isRight2 = false;
 					    Bool_t isRight3 = false;
 					    
-					    std::vector<TLorentzVector> generatedPions = generatedTauPions[genParticleIdx];
+					    const std::vector<TLorentzVector> generatedPions = generatedTauPions.at(genParticleIdx);
 					    
 					    for(unsigned int genParticleDaughterIdx=0; genParticleDaughterIdx < generatedPions.size(); genParticleDaughterIdx++)
 					    {
@@ -418,7 +442,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 					    // Matching output 
 					    if (isRight or oneIsRight or twoAreRight) 
 					    {
-					    	//std::cout << "Tau with: " << (isRight ? 3 : (twoAreRight ? 2 : (oneIsRight ? 1 : 0))) << " matched pion(s). " << std::endl; 
+					    	std::cout << "Tau with: " << (isRight ? 3 : (twoAreRight ? 2 : (oneIsRight ? 1 : 0))) << " matched pion(s). " << std::endl; 
 					    }
 					}	
 				}
@@ -427,11 +451,25 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 				if (isRight) 
 				{
 					vertices.push_back({trkIdxi, trkIdxj, trkIdxk}); 
+					//genIndices.push_back(genParticleIdx); 
 				}
 			}
 
 		}
 	}
+
+	// Filling the tree 
+	for (auto i : genIndices) 
+	{
+		auto tau = generatedTaus.at(i); 
+		tau_pt = tau.Pt(); 
+		tau_eta = tau.Eta(); 
+		tau_phi = tau.Phi(); 
+
+		tree->Fill(); 
+	}
+
+	//tree->Fill(); 
 	
 
     std::cout << "Added vertex collection of size: " << vertices.size() << std::endl; 

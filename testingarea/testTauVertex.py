@@ -37,6 +37,10 @@ process.source = cms.Source("PoolSource",
     secondaryFileNames = cms.untracked.vstring()
 )
 
+process.TFileService = cms.Service("TFileService",
+                                    fileName = cms.string("FitTauVertex.root")
+                                   )
+
 process.options = cms.untracked.PSet(
     FailPath = cms.untracked.vstring(),
     IgnoreCompletely = cms.untracked.vstring(),
