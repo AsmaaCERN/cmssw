@@ -70,7 +70,8 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 	  void doGenUnpacking(const edm::Event& event); 
 	  void resetGenDecay(); 
 	  static bool isDescendantOf(const reco::GenParticleRef& particle, const reco::GenParticleRef& potentialParent); 
-	  //void genMatchTracks(const edm::Handle<std::vector<pat::PackedCandidate> >& pfCollection);
+	  void genMatchTracks(const pixelTrack::TrackSoA& trackSoA, int max);
+	  TLorentzVector getKinematics(const reco::Candidate* cand, double mass = -1.); 
 
 
 	  //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
@@ -101,10 +102,8 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 	  std::vector<int> matchedCandidate; 
 	  std::vector<std::vector<TLorentzVector> > generatedTauPions;
 	  std::vector<ROOT::Math::XYZPoint> genTauDecayVertices; 
-  	  std::vector<std::vector<TLorentzVector> > generatedTauPions;
-  	  std::vector<ROOT::Math::XYZPoint> genTauDecayVertices; 
   	  std::vector<TLorentzVector> generatedTaus;
-  	  std::vector<int> genIndices; 
+  	  std::vector<int> trackInd; 
 
   	  TTree *tree = nullptr; 
   	  Float_t tau_pt=0, tau_eta = 0, tau_phi = 0, pi1_pt = 0, pi1_eta = 0, pi1_phi = 0, pi2_pt = 0, pi2_eta = 0, pi2_phi = 0, pi3_pt = 0, pi3_eta = 0, pi3_phi = 0; 
@@ -118,6 +117,9 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 	  Double_t fGenMatchDrThres = 0.015; // TODO: set this in the config file 
       Double_t fGenMatchPtRmax = 1.15; 
       Double_t fGenMatchPtRmin = 0.85; 
+
+      Float_t mass_kaon = 0.493677; 
+      Float_t mass_pion = 0.139571;
 
 	  // Gen particles
 	  struct GenDecay {
@@ -413,35 +415,41 @@ bool FitTauVertex::isDescendantOf(const reco::GenParticleRef& particle, const re
 }
 
 
-/*void FitTauVertex::genMatchTracks(const edm::Handle<std::vector<pat::PackedCandidate> >& pfCollection) // TODO: also use lost track collection to increase efficiency 
+void FitTauVertex::genMatchTracks(const pixelTrack::TrackSoA& trackSoA, int max) // TODO: also use lost track collection to increase efficiency 
 {
 	int numMatchK = 0, numMatchPi = 0, numMatchPis = 0, numMatchPi1 = 0, numMatchPi2 = 0, numMatchPi3 = 0; 
 
-	/*if (genB0.size()<1) 
+	if (gen.B0.size()<1) 
 	{
 		return; 
 	}
 	//assert(genB0.size() == 1); // TODO: fix this
 
+	TLorentzVector K = getKinematics(gen.K.at(0)); 
+	TLorentzVector pi = getKinematics(gen.Pi.at(0)); 
+	TLorentzVector pis = getKinematics(gen.Pis.at(0)); 
+	TLorentzVector pi1 = getKinematics(gen.TauPis.at(0).at(0)); 
+	TLorentzVector pi2 = getKinematics(gen.TauPis.at(0).at(1)); 
+	TLorentzVector pi3 = getKinematics(gen.TauPis.at(0).at(2)); 
+
+	std::vector<unsigned int> matchedTracks; 
+	matchedTracks.reserve(1); 
+
 	// Loop over the collection 
-	for (unsigned int i=0; i<pfCollection->size(); i++) 
+	for (int i=0; i<max; i++) 
 	{
-		const auto pf = pfCollection->at(i); 
+		double pT = trackSoA.pt(i); 
+
+		double eta = trackSoA.eta(i); 
+
+		double phi = trackSoA.phi(i); 
 
 
 		TLorentzVector candK; 
-		candK.SetPtEtaPhiM(pf.pt(), pf.eta(), pf.phi(), mass_kaon);
+		candK.SetPtEtaPhiM(pT, eta, phi, mass_kaon);
 
 		TLorentzVector cand; 
-		cand.SetPtEtaPhiM(pf.pt(), pf.eta(), pf.phi(), mass_pion);
-
-
-		TLorentzVector K = getGenKinematics(gen.K.at(0)); 
-		TLorentzVector pi = getGenKinematics(gen.Pi.at(0)); 
-		TLorentzVector pis = getGenKinematics(gen.Pis.at(0)); 
-		TLorentzVector pi1 = getGenKinematics(gen.TauPis.at(0).at(0)); 
-		TLorentzVector pi2 = getGenKinematics(gen.TauPis.at(0).at(1)); 
-		TLorentzVector pi3 = getGenKinematics(gen.TauPis.at(0).at(2)); 
+		cand.SetPtEtaPhiM(pT, eta, phi, mass_pion);
 		
 		// Check which gen particle the pf candidate matches 
 		bool isMatchedK = false, isMatchedPi = false, isMatchedPis = false, isMatchedPi1 = false, isMatchedPi2 = false, isMatchedPi3 = false; 
@@ -473,6 +481,7 @@ bool FitTauVertex::isDescendantOf(const reco::GenParticleRef& particle, const re
 			isMatchedPi1 = true; 
 			numMatch++; 
 			numMatchPi1++; 
+			matchedTracks.push_back(i); 
 		}
 
 		if ((cand.DeltaR(pi2) < fGenMatchDrThres) && (cand.Pt()/pi2.Pt() < fGenMatchPtRmax) && (cand.Pt()/pi2.Pt() > fGenMatchPtRmin)) 
@@ -480,6 +489,7 @@ bool FitTauVertex::isDescendantOf(const reco::GenParticleRef& particle, const re
 			isMatchedPi2 = true; 
 			numMatch++; 
 			numMatchPi2++; 
+			matchedTracks.push_back(i); 
 		}
 
 		if ((cand.DeltaR(pi3) < fGenMatchDrThres) && (cand.Pt()/pi3.Pt() < fGenMatchPtRmax) && (cand.Pt()/pi3.Pt() > fGenMatchPtRmin)) 
@@ -487,10 +497,24 @@ bool FitTauVertex::isDescendantOf(const reco::GenParticleRef& particle, const re
 			isMatchedPi3 = true; 
 			numMatch++; 
 			numMatchPi3++; 
+			matchedTracks.push_back(i); 
 		}
 		
 		bool isMatched = (isMatchedK || isMatchedPi || isMatchedPis || isMatchedPi1 || isMatchedPi2 || isMatchedPi3); 
 
+	}
+
+	bool tauMatched = (numMatchPi1 && numMatchPi2 &&  numMatchPi3); 
+
+	bool twoMatched = (numMatchPi1 && numMatchPi2) || (numMatchPi2 && numMatchPi3) || (numMatchPi1 && numMatchPi3); 
+
+	bool oneMatched = (numMatchPi1 || numMatchPi2 || numMatchPi3); 
+
+	std::cout << "Tau with: " << (tauMatched ? 3 : (twoMatched ? 2 : (oneMatched ? 1 : 0))) << " matched pion(s). " << std::endl; 
+
+	if (tauMatched && (matchedTracks.size()==3)) // If the 3 pions from the tau are matched, we add the indices to the potential vertices
+	{
+		vertices.push_back(matchedTracks); 
 	}
 
 	// Computing some other flags 
@@ -539,9 +563,22 @@ bool FitTauVertex::isDescendantOf(const reco::GenParticleRef& particle, const re
 
 	if (numMatchPi3 == 1) genMatchCutflow->Increment("pi3 matched"); 
 
-	if (numMatchPi3 > 1) genMatchCutflow->Increment("pi3 multiple match"); 
+	if (numMatchPi3 > 1) genMatchCutflow->Increment("pi3 multiple match"); */
 
-}*/
+}
+
+
+TLorentzVector FitTauVertex::getKinematics(const reco::Candidate* cand, double mass) 
+{
+    // Extract the lorentz vector from the candidate 
+    TLorentzVector vec; 
+    double massHypothesis = mass; 
+    if (mass < 0) massHypothesis = cand->mass(); 
+
+    vec.SetPtEtaPhiM(cand->pt(), cand->eta(), cand->phi(), massHypothesis); 
+    return vec; 
+}
+
 
 // ------------ method called to produce the data  ------------
 void
@@ -612,7 +649,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    }*/
 
 	vertices.clear(); // empty the collection for the new event 
-  	genIndices.clear(); 
+  	trackInd.clear(); 
 
 	
 	/*edm::Handle<edm:: HepMCProduct > genEvtHandle;
@@ -637,7 +674,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 
    // Gen matching 
-	std::vector<Int_t> ppdgId;
+	/*std::vector<Int_t> ppdgId;
 	if(isMC)
 	{
 		doGenUnpacking(iEvent); 
@@ -704,7 +741,9 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 			}
 		}
 		if (verbosity >= 2) std::cout << "\t # of gen. taus with 3prong = " << generatedTauPions.size() << std::endl;
-	}
+	}*/
+
+	if (isMC) doGenUnpacking(iEvent); 
 
 
 
@@ -735,12 +774,14 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	}  
 
 	// We need at least 3 tracks to form a tauh candidate 
-	if (trackCandidates.size() < 3) return; 
+	//if (trackCandidates.size() < 3) return; 
 
 	
 	unsigned int numTrackCandidates = trackCandidates.size(); 
 
-	Double_t piMassHypothesis = 139.57; // Make a pion hypothesis for each track  This might also get into the config file 
+	genMatchTracks(tracksoa, maxNumTracks); 
+
+	/*Double_t piMassHypothesis = 139.57; // Make a pion hypothesis for each track  This might also get into the config file 
 
 	// Start reconstrucing the 3 body vertex
 	uint32_t trkIdxi = 0, trkIdxj = 0, trkIdxk = 0; 
@@ -818,20 +859,21 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 				if (isRight) 
 				{
 					vertices.push_back({trkIdxi, trkIdxj, trkIdxk}); 
-					//genIndices.push_back(genParticleIdx); 
+					//trackInd.push_back(genParticleIdx); 
 				}
 			}
 
 		}
-	}
+	}*/
 
 	// Filling the tree 
-	for (auto i : genIndices) 
+	for (auto i : vertices) 
 	{
-		auto tau = generatedTaus.at(i); 
-		tau_pt = tau.Pt(); 
-		tau_eta = tau.Eta(); 
-		tau_phi = tau.Phi(); 
+		std::cout << "Filling!" << std::endl; 
+		auto tau = gen.Tau.at(0); 
+		tau_pt = tau->pt(); 
+		tau_eta = tau->eta(); 
+		tau_phi = tau->phi(); 
 
 		tree->Fill(); 
 	}
