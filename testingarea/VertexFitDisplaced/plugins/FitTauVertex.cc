@@ -43,6 +43,7 @@
 #include "DataFormats/Math/interface/deltaR.h"
 #include <TTree.h>
 #include <TFile.h>
+#include "PhysicsTools/HepMCCandAlgos/interface/GenParticlesHelper.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
@@ -66,6 +67,11 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 	  virtual void beginStream(edm::StreamID) override;
 	  virtual void produce(edm::Event&, const edm::EventSetup&) override;
 	  virtual void endStream() override;
+	  void doGenUnpacking(const edm::Event& event); 
+	  void resetGenDecay(); 
+	  static bool isDescendantOf(const reco::GenParticleRef& particle, const reco::GenParticleRef& potentialParent); 
+	  //void genMatchTracks(const edm::Handle<std::vector<pat::PackedCandidate> >& pfCollection);
+
 
 	  //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
 	  //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -93,6 +99,8 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 
 
 	  std::vector<int> matchedCandidate; 
+	  std::vector<std::vector<TLorentzVector> > generatedTauPions;
+	  std::vector<ROOT::Math::XYZPoint> genTauDecayVertices; 
   	  std::vector<std::vector<TLorentzVector> > generatedTauPions;
   	  std::vector<ROOT::Math::XYZPoint> genTauDecayVertices; 
   	  std::vector<TLorentzVector> generatedTaus;
@@ -104,6 +112,29 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 
 	  // extremely basic definition of vertex
 	  std::vector<std::vector<uint32_t> > vertices; // We just store a vector of track indiced that are part of the vertex for each event
+
+	  
+	  // Thresholds for genmatching
+	  Double_t fGenMatchDrThres = 0.015; // TODO: set this in the config file 
+      Double_t fGenMatchPtRmax = 1.15; 
+      Double_t fGenMatchPtRmin = 0.85; 
+
+	  // Gen particles
+	  struct GenDecay {
+		std::vector<const reco::GenParticle*> B0; 
+		std::vector<const reco::GenParticle*> Dstar; 
+		std::vector<const reco::GenParticle*> D0; 
+		std::vector<const reco::GenParticle*> Tau; 
+		std::vector<const reco::GenParticle*> Pis; 
+		std::vector<const reco::GenParticle*> K; 
+		std::vector<const reco::GenParticle*> Pi; 
+		std::vector<std::vector<const reco::GenParticle*> > TauPis;  
+		//std::vector<std::vector<const reco::GenParticle*> > TauPi0; 
+		//std::vector<const reco::GenParticle*> NuBar; 
+		//std::vector<const reco::GenParticle*> Nu;  
+	  }; 
+
+	  GenDecay gen; 
 
 
 
@@ -178,6 +209,340 @@ FitTauVertex::~FitTauVertex()
 // member functions
 //
 
+void FitTauVertex::doGenUnpacking(const edm::Event& event) 
+{
+	event.getByToken(genParticlesToken, genParticles); 
+	//event.getByToken(packedgenParticlesToken_ , packedgenParticles); 
+
+	using namespace GenParticlesHelper;
+
+	resetGenDecay(); 
+
+	// Find the B 
+	reco::GenParticleRefVector B0s;  
+	findParticles(*genParticles, B0s, 511, 2);
+
+	std::cout << "[GEN UNPACKING] Number of B0s: " << B0s.size() << std::endl; 
+
+	// Find the tau 
+	reco::GenParticleRefVector taus;  
+	findParticles(*genParticles, taus, 15, 2);
+
+	// Find the D0 
+	//reco::GenParticleRefVector D0s;  
+	//findParticles(*genParticles, D0s, 421, 2);
+
+	// Find the Dstar 
+	//reco::GenParticleRefVector Dstars;  
+	//findParticles(*genParticles, Dstars, 413, 2);
+
+	// Find the K 
+	//reco::GenParticleRefVector Ks;  
+	//findParticles(*genParticles, Ks, 321, 1); // Final state particles
+
+	// Find the pis 
+	//reco::GenParticleRefVector pis;  
+	//findParticles(*genParticles, pis, 211, 1); // Final state particles
+
+
+	//bool foundGenDecay = false; 
+
+	for (auto particle : B0s) 
+	{
+		std::cout << "[GEN UNPACKING] B with PDGID: " << (*particle).pdgId() << std::endl;
+		//reco::GenParticleRefVector decayTree; 
+		//findDescendents(particle, decayTree, 2); 
+
+		//reco::GenParticleRefVector finalStates; 
+		//findDescendents(particle, finalStates, 1); 
+
+		//if (!(finalStates.size() > 7)) continue; 
+
+		// Find the Dstar 
+		reco::GenParticleRefVector Dstars;  
+		findDescendents(particle, Dstars, 2, 413);
+
+		if (!(Dstars.size() > 0)) continue; 
+
+		// Find the tau 
+		reco::GenParticleRefVector taus;  
+		findDescendents(particle, taus, 2, 15);
+
+		if (!(taus.size() > 0)) continue; 
+
+		// Find the D0 
+		reco::GenParticleRefVector D0s;  
+		findDescendents(particle, D0s, 2, 421);
+
+		if (!(D0s.size() > 0)) continue; 
+
+		// Find the K 
+		reco::GenParticleRefVector Ks;  
+		findDescendents(particle, Ks, 1, 321); // Final state particles
+
+		if (!(Ks.size() > 0)) continue; 
+
+		// Find the pis 
+		reco::GenParticleRefVector pis;  
+		findDescendents(particle, pis, 1, 211); // Final state particles
+
+
+		// We assume we have only once each particle // No wrong! 
+	   
+		edm::Ref<std::vector<reco::GenParticle> > localD0; 
+		reco::GenParticle *localDstar; 
+		reco::GenParticle *localTau; 
+		edm::Ref<std::vector<reco::GenParticle> > localK; 
+		std::vector<const reco::GenParticle*> localPi; 
+		std::vector<const reco::GenParticle*> localPis; 
+		std::vector<const reco::GenParticle*> localTauPis; 
+
+
+		auto Dstar = Dstars.at(0); // If more than 1 Dstar, not the signal decay... 
+		auto tau = taus.at(0); // Same for tau
+		// Todo: check directness of Dstar 
+		int localD0Set = 0, localKSet = 0; 
+
+		std::vector<const reco::GenParticle*> tauPis; 
+		tauPis.reserve(3); 
+
+		for (auto D0 : D0s) // in principle could use the first element... 
+		{
+			if (isDescendantOf(D0, Dstar)) 
+			{
+				localD0 = D0; 
+				localD0Set++; 
+			}
+			else 
+			{
+				continue; // We possibly have D0 as intermediate resonance of the tau 
+			}
+		}
+
+		for (auto K : Ks) 
+		{    
+			if (isDescendantOf(K, localD0)) 
+			{
+				localK = K; 
+				localKSet++; 
+			}
+			else if (isDescendantOf(K, tau))
+			{
+				localTauPis.push_back(&(*K)); ; // TODO: check for kaon in tau decay 
+			}
+		}
+
+		for (auto pion : pis) 
+		{
+			if (isDescendantOf(pion, tau)) 
+			{
+				localTauPis.push_back(&(*pion)); 
+			}
+			else if (isDescendantOf(pion, localD0)) 
+			{
+				localPi.push_back(&(*pion)); 
+			}
+			else if (isDescendantOf(pion, Dstar)) //  Checking after the pion from D0 
+			{
+				localPis.push_back(&(*pion)); 
+			}
+		}
+
+		if (localD0Set && localKSet && (localTauPis.size() == 3) && (localPi.size() == 1) && (localPis.size()  == 1)) // TODO: maybe check that we have only one D0 respectively K candidate 
+		{
+			//foundGenDecay = true; 
+		
+			gen.B0.push_back(&(*particle)); 
+			gen.D0.push_back(&(*localD0)); 
+			gen.K.push_back(&(*localK)); 
+			gen.Pi.push_back(localPi.at(0)); 
+			gen.Dstar.push_back(&(*Dstar)); 
+			gen.Pis.push_back(localPis.at(0)); 
+			gen.Tau.push_back(&(*tau)); 
+			gen.TauPis.push_back(localTauPis); 
+		}
+
+	}
+
+
+}
+
+
+
+void FitTauVertex::resetGenDecay() 
+{
+    gen.B0.clear(); 
+    gen.Dstar.clear(); 
+    gen.D0.clear(); 
+    gen.Tau.clear(); 
+    gen.Pis.clear(); 
+    gen.K.clear(); 
+    gen.Pi.clear(); 
+    gen.TauPis.clear(); 
+    //gen.TauPi0.clear(); 
+    //gen.Nu.clear(); 
+    //gen.NuBar.clear(); 
+}
+
+
+bool FitTauVertex::isDescendantOf(const reco::GenParticleRef& particle, const reco::GenParticleRef& potentialParent) 
+{
+    using namespace GenParticlesHelper; 
+
+    bool particleFound = false; 
+
+    const reco::GenParticleRefVector& daughters = potentialParent->daughterRefVector(); 
+    for (auto daughter = daughters.begin(); daughter != daughters.end(); daughter++) 
+    {
+        if (*daughter == particle) 
+        {
+            particleFound = true; 
+            //std::cout << "[GEN UNPACKING] Is descendant" << std::endl; 
+        }
+        else 
+        {
+            bool foundInDescendants = isDescendantOf(particle, *daughter); 
+            if (foundInDescendants) particleFound = true; 
+        }
+    }
+
+    //reco::GenParticleRefVector decayTree; 
+    //findDescendents(particle, decayTree, 2); 
+
+    return particleFound; 
+}
+
+
+/*void FitTauVertex::genMatchTracks(const edm::Handle<std::vector<pat::PackedCandidate> >& pfCollection) // TODO: also use lost track collection to increase efficiency 
+{
+	int numMatchK = 0, numMatchPi = 0, numMatchPis = 0, numMatchPi1 = 0, numMatchPi2 = 0, numMatchPi3 = 0; 
+
+	/*if (genB0.size()<1) 
+	{
+		return; 
+	}
+	//assert(genB0.size() == 1); // TODO: fix this
+
+	// Loop over the collection 
+	for (unsigned int i=0; i<pfCollection->size(); i++) 
+	{
+		const auto pf = pfCollection->at(i); 
+
+
+		TLorentzVector candK; 
+		candK.SetPtEtaPhiM(pf.pt(), pf.eta(), pf.phi(), mass_kaon);
+
+		TLorentzVector cand; 
+		cand.SetPtEtaPhiM(pf.pt(), pf.eta(), pf.phi(), mass_pion);
+
+
+		TLorentzVector K = getGenKinematics(gen.K.at(0)); 
+		TLorentzVector pi = getGenKinematics(gen.Pi.at(0)); 
+		TLorentzVector pis = getGenKinematics(gen.Pis.at(0)); 
+		TLorentzVector pi1 = getGenKinematics(gen.TauPis.at(0).at(0)); 
+		TLorentzVector pi2 = getGenKinematics(gen.TauPis.at(0).at(1)); 
+		TLorentzVector pi3 = getGenKinematics(gen.TauPis.at(0).at(2)); 
+		
+		// Check which gen particle the pf candidate matches 
+		bool isMatchedK = false, isMatchedPi = false, isMatchedPis = false, isMatchedPi1 = false, isMatchedPi2 = false, isMatchedPi3 = false; 
+		int numMatch = 0; 
+
+		if ((candK.DeltaR(K) < fGenMatchDrThres) && (candK.Pt()/K.Pt() < fGenMatchPtRmax) && (candK.Pt()/K.Pt() > fGenMatchPtRmin)) 
+		{
+			isMatchedK = true; 
+			numMatch++; 
+			numMatchK++; 
+		}
+
+		if ((cand.DeltaR(pi) < fGenMatchDrThres) && (cand.Pt()/pi.Pt() < fGenMatchPtRmax) && (cand.Pt()/pi.Pt() > fGenMatchPtRmin)) 
+		{
+			isMatchedPi = true; 
+			numMatch++; 
+			numMatchPi++; 
+		}
+
+		if ((cand.DeltaR(pis) < fGenMatchDrThres) && (cand.Pt()/pis.Pt() < fGenMatchPtRmax) && (cand.Pt()/pis.Pt() > fGenMatchPtRmin)) 
+		{
+			isMatchedPis = true; 
+			numMatch++; 
+			numMatchPis++; 
+		}
+
+		if ((cand.DeltaR(pi1) < fGenMatchDrThres) && (cand.Pt()/pi1.Pt() < fGenMatchPtRmax) && (cand.Pt()/pi1.Pt() > fGenMatchPtRmin)) 
+		{
+			isMatchedPi1 = true; 
+			numMatch++; 
+			numMatchPi1++; 
+		}
+
+		if ((cand.DeltaR(pi2) < fGenMatchDrThres) && (cand.Pt()/pi2.Pt() < fGenMatchPtRmax) && (cand.Pt()/pi2.Pt() > fGenMatchPtRmin)) 
+		{
+			isMatchedPi2 = true; 
+			numMatch++; 
+			numMatchPi2++; 
+		}
+
+		if ((cand.DeltaR(pi3) < fGenMatchDrThres) && (cand.Pt()/pi3.Pt() < fGenMatchPtRmax) && (cand.Pt()/pi3.Pt() > fGenMatchPtRmin)) 
+		{
+			isMatchedPi3 = true; 
+			numMatch++; 
+			numMatchPi3++; 
+		}
+		
+		bool isMatched = (isMatchedK || isMatchedPi || isMatchedPis || isMatchedPi1 || isMatchedPi2 || isMatchedPi3); 
+
+	}
+
+	// Computing some other flags 
+	/*bool allMatched = numMatchPi1 && numMatchPi2 && numMatchPi3;
+
+	bool twoMatched = (numMatchPi1 && numMatchPi2) || (numMatchPi2 && numMatchPi3) || (numMatchPi1 && numMatchPi3); 
+
+	bool oneMatched = numMatchPi1 || numMatchPi2 || numMatchPi3; 
+
+	bool D0matched = numMatchK && numMatchPi; 
+
+	bool DstarMatched = D0matched && numMatchPis; 
+
+
+	// Filling cutflow plot 
+
+	if (numMatchK == 1) genMatchCutflow->Increment("K matched"); 
+
+	if (numMatchK > 1) genMatchCutflow->Increment("K multiple match"); 
+
+	if (numMatchPi == 1) genMatchCutflow->Increment("pi matched"); 
+
+	if (numMatchPi > 1) genMatchCutflow->Increment("pi multiple match"); 
+
+	if (numMatchPis == 1) genMatchCutflow->Increment("pis matched"); 
+
+	if (numMatchPis > 1) genMatchCutflow->Increment("pis multiple match"); 
+
+	if (D0matched) genMatchCutflow->Increment("D0 matched"); 
+
+	if (DstarMatched) genMatchCutflow->Increment("Dstar matched"); 
+
+	if (allMatched) genMatchCutflow->Increment("tau matched"); 
+
+	if (twoMatched) genMatchCutflow->Increment("tau 2 pions match"); 
+
+	if (oneMatched) genMatchCutflow->Increment("tau 1 pion match"); 
+
+	if (numMatchPi1 == 1) genMatchCutflow->Increment("pi1 matched"); 
+
+	if (numMatchPi1 > 1) genMatchCutflow->Increment("pi1 multiple match"); 
+
+	if (numMatchPi2 == 1) genMatchCutflow->Increment("pi2 matched"); 
+
+	if (numMatchPi2 > 1) genMatchCutflow->Increment("pi2 multiple match"); 
+
+	if (numMatchPi3 == 1) genMatchCutflow->Increment("pi3 matched"); 
+
+	if (numMatchPi3 > 1) genMatchCutflow->Increment("pi3 multiple match"); 
+
+}*/
+
 // ------------ method called to produce the data  ------------
 void
 FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
@@ -246,28 +611,28 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	 dydz = bs.dydz();
    }*/
 
-   	vertices.clear(); // empty the collection for the new event 
-   	genIndices.clear(); 
+	vertices.clear(); // empty the collection for the new event 
+  	genIndices.clear(); 
 
-   	
-   	/*edm::Handle<edm:: HepMCProduct > genEvtHandle;
+	
+	/*edm::Handle<edm:: HepMCProduct > genEvtHandle;
 	event.getByLabel( "generator", genEvtHandle) ;
 	const HepMC::GenEvent* Evt = genEvtHandle->GetEvent() ;
 	//
 	// this is an example loop over the hierarchy of vertices
 	//
 	for ( HepMC::GenEvent::vertex_const_iterator
-	          itVtx=Evt->vertices_begin(); itVtx!=Evt->vertices_end(); ++itVtx )
+			  itVtx=Evt->vertices_begin(); itVtx!=Evt->vertices_end(); ++itVtx )
 	{
-	      //
-	      // this is an example loop over particles coming out of each vertex in the loop
-	      //
-	      for ( HepMC::GenVertex::particles_out_const_iterator
-	              itPartOut=(*itVtx)->particles_out_const_begin();
-	              itPartOut!=(*itVtx)->particles_out_const_end(); ++itPartOut )
-	      {
-	         itPartOut->Print(); 
-	      }
+		  //
+		  // this is an example loop over particles coming out of each vertex in the loop
+		  //
+		  for ( HepMC::GenVertex::particles_out_const_iterator
+				  itPartOut=(*itVtx)->particles_out_const_begin();
+				  itPartOut!=(*itVtx)->particles_out_const_end(); ++itPartOut )
+		  {
+			 itPartOut->Print(); 
+		  }
 	}*/
 
 
@@ -275,6 +640,9 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	std::vector<Int_t> ppdgId;
 	if(isMC)
 	{
+		doGenUnpacking(iEvent); 
+		std::cout << "Number of Gen events: " << gen.B0.size() << std::endl; 
+
 		iEvent.getByToken(genParticlesToken, genParticles); 
 
 		for( unsigned p=0; p < genParticles->size(); ++p)
@@ -347,10 +715,10 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	  
 		
 		// Selection 
-	  	auto pt = tracksoa.pt(iTk); 
+		auto pt = tracksoa.pt(iTk); 
 
-	  	// Here this is a selection, to be replaced, but I leave it as an example of how to access the quantities 		
-		/*if (pt < 0.5) continue; 
+		// Here this is a selection, to be replaced, but I leave it as an example of how to access the quantities 		
+		if (pt < 0.5) continue; 
 
 		if (TMath::Abs(tracksoa.eta(iTk)) > 2.3) continue; 
 
@@ -358,8 +726,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 		if (tracksoa.chi2(iTk) > 100) continue; 
 
-		if (tracksoa.nHits(iTk) < 3) continue; */
-		
+		if (tracksoa.nHits(iTk) < 3) continue; 		
 
 
 
@@ -412,38 +779,38 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 					for(unsigned int genParticleIdx=0; genParticleIdx < generatedTauPions.size(); genParticleIdx++)
 					{
-				    
-					    Bool_t isRight1 = false;
-					    Bool_t isRight2 = false;
-					    Bool_t isRight3 = false;
-					    
-					    const std::vector<TLorentzVector> generatedPions = generatedTauPions.at(genParticleIdx);
-					    
-					    for(unsigned int genParticleDaughterIdx=0; genParticleDaughterIdx < generatedPions.size(); genParticleDaughterIdx++)
-					    {
-					      
-					      if(pi1.DeltaR(generatedPions[genParticleDaughterIdx]) < 0.1) isRight1 = true;
-					      else if(pi2.DeltaR(generatedPions[genParticleDaughterIdx]) < 0.1) isRight2 = true;
-					      else if(pi3.DeltaR(generatedPions[genParticleDaughterIdx]) < 0.1) isRight3 = true;	// TODO: set the criterion in the config file 
-					      
-					    }
-					    
-					    isRight = isRight1 && isRight2 && isRight3;
+					
+						Bool_t isRight1 = false;
+						Bool_t isRight2 = false;
+						Bool_t isRight3 = false;
+						
+						std::vector<TLorentzVector> generatedPions = generatedTauPions[genParticleIdx];
+						
+						for(unsigned int genParticleDaughterIdx=0; genParticleDaughterIdx < generatedPions.size(); genParticleDaughterIdx++)
+						{
+						  
+						  if(pi1.DeltaR(generatedPions[genParticleDaughterIdx]) < 0.1) isRight1 = true;
+						  else if(pi2.DeltaR(generatedPions[genParticleDaughterIdx]) < 0.1) isRight2 = true;
+						  else if(pi3.DeltaR(generatedPions[genParticleDaughterIdx]) < 0.1) isRight3 = true;	// TODO: set the criterion in the config file 
+						  
+						}
+						
+						isRight = isRight1 && isRight2 && isRight3;
 
-					    twoAreRight = (isRight1 and isRight2) or (isRight2 and isRight3) or (isRight1 and isRight3); 
+						twoAreRight = (isRight1 and isRight2) or (isRight2 and isRight3) or (isRight1 and isRight3); 
 
-					    oneIsRight = isRight1 or isRight2 or isRight3; 
-					    
-					    if(isRight)
-					    {
-					      pid = ppdgId[genParticleIdx]; 
-					      std::cout << "Matching track with pid: " << pid << std::endl; 
-					    }
-					    // Matching output 
-					    if (isRight or oneIsRight or twoAreRight) 
-					    {
-					    	std::cout << "Tau with: " << (isRight ? 3 : (twoAreRight ? 2 : (oneIsRight ? 1 : 0))) << " matched pion(s). " << std::endl; 
-					    }
+						oneIsRight = isRight1 or isRight2 or isRight3; 
+						
+						if(isRight)
+						{
+						  pid = ppdgId[genParticleIdx]; 
+						  std::cout << "Matching track with pid: " << pid << std::endl; 
+						}
+						// Matching output 
+						if (isRight or oneIsRight or twoAreRight) 
+						{
+							//std::cout << "Tau with: " << (isRight ? 3 : (twoAreRight ? 2 : (oneIsRight ? 1 : 0))) << " matched pion(s). " << std::endl; 
+						}
 					}	
 				}
 
@@ -472,9 +839,9 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	//tree->Fill(); 
 	
 
-    std::cout << "Added vertex collection of size: " << vertices.size() << std::endl; 
+	std::cout << "Added vertex collection of size: " << vertices.size() << std::endl; 
 
-    //TODO: Write out relevant information 
+	//TODO: Write out relevant information 
 
 
 

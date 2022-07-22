@@ -8,5 +8,6 @@
 <use name="TrackingTools/TransientVertex"/>
 <use name="RecoVertex/VertexPrimitives"/>
 <use name="DataFormats/Candidate"/>
+<use name="PhysicsTools/HepMCCandAlgos" />
 <use name="CommonTools/UtilAlgos"/>
 <flags EDM_PLUGIN="1"/>
