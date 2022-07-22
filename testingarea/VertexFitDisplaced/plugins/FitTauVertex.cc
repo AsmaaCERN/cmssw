@@ -100,7 +100,7 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 
 
 	  std::vector<int> matchedCandidate; 
-	  std::vector<ROOT::Math::XYZPoint> genTauDecayVertices; 
+	  std::vector<ROOT::Math::XYZPoint> genVertices; 
 
   	  TTree *tree = nullptr; 
   	  Float_t tau_pt=0, tau_eta = 0, tau_phi = 0, pi1_pt = 0, pi1_eta = 0, pi1_phi = 0, pi2_pt = 0, pi2_eta = 0, pi2_phi = 0, pi3_pt = 0, pi3_eta = 0, pi3_phi = 0; 
@@ -509,10 +509,16 @@ void FitTauVertex::genMatchTracks(const pixelTrack::TrackSoA& trackSoA, int max)
 
 	std::cout << "Tau with: " << (tauMatched ? 3 : (twoMatched ? 2 : (oneMatched ? 1 : 0))) << " matched pion(s). " << std::endl; 
 
+	assert(gen.TauPis.at(0).at(0)->vertex() == gen.TauPis.at(0).at(1)->vertex()); 
+	assert(gen.TauPis.at(0).at(1)->vertex() == gen.TauPis.at(0).at(2)->vertex()); 
+
 	if (tauMatched && (matchedTracks.size()==3)) // If the 3 pions from the tau are matched, we add the indices to the potential vertices
 	{
 		vertices.push_back(matchedTracks); 
+		genVertices.push_back(gen.TauPis.at(0).at(0)->vertex()); 
 	}
+
+
 
 	// Computing some other flags 
 	/*bool allMatched = numMatchPi1 && numMatchPi2 && numMatchPi3;
