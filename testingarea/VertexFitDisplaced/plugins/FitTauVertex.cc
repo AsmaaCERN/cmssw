@@ -100,10 +100,7 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 
 
 	  std::vector<int> matchedCandidate; 
-	  std::vector<std::vector<TLorentzVector> > generatedTauPions;
 	  std::vector<ROOT::Math::XYZPoint> genTauDecayVertices; 
-  	  std::vector<TLorentzVector> generatedTaus;
-  	  std::vector<int> trackInd; 
 
   	  TTree *tree = nullptr; 
   	  Float_t tau_pt=0, tau_eta = 0, tau_phi = 0, pi1_pt = 0, pi1_eta = 0, pi1_phi = 0, pi2_pt = 0, pi2_eta = 0, pi2_phi = 0, pi3_pt = 0, pi3_eta = 0, pi3_phi = 0; 
@@ -608,9 +605,6 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    iEvent.getByToken(vtxToken, pixelVertices); 
 
    std::vector<uint32_t> trackCandidates; 
-
-   generatedTauPions.clear(); // Empty the collection for each event 
-   generatedTaus.clear(); 
    
 
    const auto& vertexsoa = *(iEvent.get(vtxToken).get());
@@ -649,7 +643,6 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    }*/
 
 	vertices.clear(); // empty the collection for the new event 
-  	trackInd.clear(); 
 
 	
 	/*edm::Handle<edm:: HepMCProduct > genEvtHandle;
