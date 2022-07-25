@@ -865,6 +865,21 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 		}
 	}*/
 
+	for (unsigned int i=0; i<genVertices.size(); i++) 
+	{
+		const auto genVertex = genVertices.at(i); // The gen vertex 
+
+		for (auto iTk : vertices.at(i)) // put here vertexsoa.MAXTRACKS ? 
+		{
+			auto nHits = tracksoa.nHits(iTk); 
+			if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
+		  
+			
+			// Put your code here 
+
+		}  
+	}
+
 	// Filling the tree 
 	for (auto i : vertices) 
 	{
