@@ -435,6 +435,9 @@ void FitTauVertex::genMatchTracks(const pixelTrack::TrackSoA& trackSoA, int max)
 	// Loop over the collection 
 	for (int i=0; i<max; i++) 
 	{
+		auto nHits = trackSoA.nHits(i); 
+		if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
+	  
 		double pT = trackSoA.pt(i); 
 
 		double eta = trackSoA.eta(i); 
@@ -649,6 +652,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    }*/
 
 	vertices.clear(); // empty the collection for the new event 
+	genVertices.clear(); 
 
 	
 	/*edm::Handle<edm:: HepMCProduct > genEvtHandle;
@@ -881,10 +885,10 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	}
 
 	// Filling the tree 
-	for (auto i : vertices) 
+	for (unsigned int i = 0; i < vertices.size(); i++) 
 	{
 		std::cout << "Filling!" << std::endl; 
-		auto tau = gen.Tau.at(0); 
+		auto tau = gen.Tau.at(i); 
 		tau_pt = tau->pt(); 
 		tau_eta = tau->eta(); 
 		tau_phi = tau->phi(); 
