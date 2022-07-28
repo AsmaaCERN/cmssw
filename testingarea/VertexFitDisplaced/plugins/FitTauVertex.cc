@@ -108,7 +108,7 @@ class FitTauVertex : public edm::stream::EDProducer<> {
 	  std::vector<ROOT::Math::XYZPoint> genVertices; 
 
   	  TTree *tree = nullptr; 
-  	  Float_t tau_pt=0, tau_eta = 0, tau_phi = 0, pi1_pt = 0, pi1_eta = 0, pi1_phi = 0, pi2_pt = 0, pi2_eta = 0, pi2_phi = 0, pi3_pt = 0, pi3_eta = 0, pi3_phi = 0; 
+  	  Float_t dx_pull = 0, dy_pull = 0, dz_pull = 0, tau_pt=0, tau_eta = 0, tau_phi = 0, pi1_pt = 0, pi1_eta = 0, pi1_phi = 0, pi2_pt = 0, pi2_eta = 0, pi2_phi = 0, pi3_pt = 0, pi3_eta = 0, pi3_phi = 0; 
 
 
 	  // extremely basic definition of vertex
@@ -178,6 +178,9 @@ FitTauVertex::FitTauVertex(const edm::ParameterSet& iConfig)
 	tree->Branch("tau_pt", &tau_pt); 
 	tree->Branch("tau_eta", &tau_eta); 
 	tree->Branch("tau_phi", &tau_phi); 
+	tree->Branch("dx_pull", &dx_pull);
+	tree->Branch("dy_pull", &dy_pull);
+	tree->Branch("dz_pull", &dz_pull);	
    //register your products
 /* Examples
    produces<ExampleData2>();
@@ -440,9 +443,6 @@ void FitTauVertex::genMatchTracks(const pixelTrack::TrackSoA& trackSoA, int max)
 	// Loop over the collection 
 	for (int i=0; i<max; i++) 
 	{
-		auto nHits = trackSoA.nHits(i); 
-		if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
-	  
 		double pT = trackSoA.pt(i); 
 
 		double eta = trackSoA.eta(i); 
@@ -639,7 +639,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    assert(&tracksoa); 
 
    uint32_t maxNumTracks = tracksoa.stride(); // This is the dimension of the soas, not the actual number of tracks. We iterate over them and break the loop if nHits is 0 (index no longer used). 
-  
+   
 
    //beamSpot
    edm::Handle<reco::BeamSpot> beampspotHandle;
@@ -657,7 +657,6 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    }
 
 	vertices.clear(); // empty the collection for the new event 
-	genVertices.clear(); 
 
 	
 	/*edm::Handle<edm:: HepMCProduct > genEvtHandle;
@@ -753,82 +752,6 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 	if (isMC) doGenUnpacking(iEvent); 
 
-
-
-	double xt, yt; // x translate, y translate, sth small ~0.2 for now but later vertex 
-	double R;
-	xt = 0.2;
-	yt = 0.2;
-	const double bField = 3.8;
-	const double b = 1/bField;
-	// std::ofstream file("jacobian1.csv");
-	for (uint32_t iTk=0; iTk<maxNumTracks; iTk++) // put here vertexsoa.MAXTRACKS ? 
-	{
-		riemannFit::LineFit karimakiLine;
-		riemannFit::CircleFit karimakiCircle;
-		riemannFit::Matrix3d jacobian;
-
-		jacobian << 0,0,0,0,0,0,0,0,0;
-		auto nHits = tracksoa.nHits(iTk); 
-		if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
-	  
-		
-		// Selection 
-		auto pt = tracksoa.pt(iTk); 
-
-		// Here this is a selection, to be replaced, but I leave it as an example of how to access the quantities 		
-		if (pt < 0.5) continue; 
-
-		if (TMath::Abs(tracksoa.eta(iTk)) > 2.3) continue; 
-
-		if (TMath::Abs(tracksoa.charge(iTk)) != 1) continue;  // Instead of pdgId 
-
-		if (tracksoa.chi2(iTk) > 100) continue; 
-
-		if (tracksoa.nHits(iTk) < 3) continue; 		
-
-
-
-		trackCandidates.push_back(iTk); 
-
-		R = tracksoa.pt(iTk) / (tracksoa.charge(iTk) * bField)   ; // F=mv^2/r=qvB => r = pt/qB
-		karimakiCircle.par(0) = x0; 
-		karimakiCircle.par(1) = y0; 
-		karimakiCircle.par(2) = R;
-
-	    /*!< circle covariance matrix: \n
-        |cov(X0,X0)|cov(Y0,X0)|cov( R,X0)| \n
-        |cov(X0,Y0)|cov(Y0,Y0)|cov( R,Y0)| \n
-        |cov(X0, R)|cov(Y0, R)|cov( R, R)|
-        */
-		karimakiCircle.cov(0,0) = tracksoa.stateAtBS.covariance(iTk)(0); 
-		karimakiCircle.cov(0,1) = tracksoa.stateAtBS.covariance(iTk)(1); 
-		karimakiCircle.cov(0,2) = tracksoa.stateAtBS.covariance(iTk)(2) / b; 
-		karimakiCircle.cov(1,0) = karimakiCircle.cov(0,1);
-		karimakiCircle.cov(1,1) = tracksoa.stateAtBS.covariance(iTk)(5);
-		karimakiCircle.cov(1,2) = tracksoa.stateAtBS.covariance(iTk)(6) / b;
-		karimakiCircle.cov(2,0) = karimakiCircle.cov(0,2);
-		karimakiCircle.cov(2,1) = karimakiCircle.cov(1,2);
-		karimakiCircle.cov(2,2) = tracksoa.stateAtBS.covariance(iTk)(9) / (b * b);
-		
-		karimakiLine.par(0) = tracksoa.stateAtBS.state(iTk)(4); //cotan theta
-		karimakiLine.par(1) = tracksoa.stateAtBS.state(iTk)(4); //zip
-
-		/*!< line covariance matrix: \n
-        |cov(c_t,c_t)|cov(Zip,c_t)| \n
-        |cov(c_t,Zip)|cov(Zip,Zip)|
-        */
-		karimakiLine.cov(0,0) = tracksoa.stateAtBS.covariance(iTk)(12);//cov(cotan(theta),cotan(theta))
-		karimakiLine.cov(0,1) = tracksoa.stateAtBS.covariance(iTk)(13);
-		karimakiLine.cov(1,0) = karimakiLine.cov(0,1); 
-		karimakiLine.cov(1,1) = tracksoa.stateAtBS.covariance(iTk)(14);
-		std::cout << " *PRE* jacobian " << iTk << ":" << jacobian << std::endl;
-
-		brokenline::translateKarimaki(karimakiCircle, xt, yt, jacobian);
-		//file << jacobian << "\n\n" ;
-		std::cout << "jacobian " << iTk << ":" << jacobian << std::endl;
-		}
-		//file.close();
 	 
 
 	// We need at least 3 tracks to form a tauh candidate 
@@ -925,28 +848,94 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 	for (unsigned int i=0; i<genVertices.size(); i++) 
 	{
+		std::cout <<  genVertices.size() << vertices.at(i).size() << std::endl;
+
 		const auto genVertex = genVertices.at(i); // The gen vertex 
 
 		for (auto iTk : vertices.at(i)) // put here vertexsoa.MAXTRACKS ? 
 		{
 			auto nHits = tracksoa.nHits(iTk); 
 			if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
-		  
-			
-			// Put your code here 
+		
+			std::cout << iTk << genVertices.at(i).X() << " --- " << x0 << std::endl;
+
+			double xt, yt;  
+			double R;
+			xt = genVertex.X();
+			yt = genVertex.Y();
+			const double bField = 3.8;
+			const double b = 1/bField;
+			// std::ofstream file("jacobian1.csv");
+			riemannFit::LineFit karimakiLine;
+			riemannFit::CircleFit karimakiCircle;
+			riemannFit::Matrix3d jacobian;
+
+			jacobian << 0,0,0,0,0,0,0,0,0;
+			// Selection 
+			auto pt = tracksoa.pt(iTk); 
+
+			trackCandidates.push_back(iTk); 
+
+			R = tracksoa.pt(iTk) / (tracksoa.charge(iTk) * bField)   ; // F=mv^2/r=qvB => r = pt/qB
+			karimakiCircle.par(0) = x0; 
+			karimakiCircle.par(1) = y0; 
+			karimakiCircle.par(2) = R;
+
+			/*!< circle covariance matrix: \n
+			|cov(X0,X0)|cov(Y0,X0)|cov( R,X0)| \n
+			|cov(X0,Y0)|cov(Y0,Y0)|cov( R,Y0)| \n
+			|cov(X0, R)|cov(Y0, R)|cov( R, R)|
+			*/
+			karimakiCircle.cov(0,0) = tracksoa.stateAtBS.covariance(iTk)(0); 
+			karimakiCircle.cov(0,1) = tracksoa.stateAtBS.covariance(iTk)(1); 
+			karimakiCircle.cov(0,2) = tracksoa.stateAtBS.covariance(iTk)(2) / b; 
+			karimakiCircle.cov(1,0) = karimakiCircle.cov(0,1);
+			karimakiCircle.cov(1,1) = tracksoa.stateAtBS.covariance(iTk)(5);
+			karimakiCircle.cov(1,2) = tracksoa.stateAtBS.covariance(iTk)(6) / b;
+			karimakiCircle.cov(2,0) = karimakiCircle.cov(0,2);
+			karimakiCircle.cov(2,1) = karimakiCircle.cov(1,2);
+			karimakiCircle.cov(2,2) = tracksoa.stateAtBS.covariance(iTk)(9) / (b * b);
+				
+			karimakiLine.par(0) = tracksoa.stateAtBS.state(iTk)(4); //cotan theta
+			karimakiLine.par(1) = tracksoa.stateAtBS.state(iTk)(4); //zip
+
+			/*!< line covariance matrix: \n
+			|cov(c_t,c_t)|cov(Zip,c_t)| \n
+			|cov(c_t,Zip)|cov(Zip,Zip)|
+			*/
+			karimakiLine.cov(0,0) = tracksoa.stateAtBS.covariance(iTk)(12);//cov(cotan(theta),cotan(theta))
+			karimakiLine.cov(0,1) = tracksoa.stateAtBS.covariance(iTk)(13);
+			karimakiLine.cov(1,0) = karimakiLine.cov(0,1); 
+			karimakiLine.cov(1,1) = tracksoa.stateAtBS.covariance(iTk)(14);
+			std::cout << " *PRE* jacobian " << iTk << ":" << jacobian << std::endl;
+			std::cout << "covvvvvv(0,0)" <<  karimakiCircle.cov(0,0)  << "hitss:" << nHits << std::endl;
+
+			brokenline::translateKarimaki(karimakiCircle, xt, yt, jacobian);
+			//file << jacobian << "\n\n" ;
+			dx_pull = ( x0 - xt ) / sqrt(jacobian(0,0));
+			dy_pull = ( y0 - yt ) / sqrt(jacobian(1,1));
+			//dz_pull = ( z0 - zt ) / sqrt(jacobian(?,?));
+
+			std::cout << jacobian(0,0) <<"jacobian " << iTk << ":" << jacobian << "dx pull?" << dx_pull << std::endl;
+			}
+			//file.close();
 
 		}  
-	}
+		std::cout << maxNumTracks << vertices.size() << gen.Tau.size() << std::endl;
 
 	// Filling the tree 
-	for (unsigned int i = 0; i < vertices.size(); i++) 
+	for (auto i : vertices) 
 	{
 		std::cout << "Filling!" << std::endl; 
-		auto tau = gen.Tau.at(i); 
+		auto tau = gen.Tau.at(0); 
 		tau_pt = tau->pt(); 
 		tau_eta = tau->eta(); 
 		tau_phi = tau->phi(); 
 
+
+		//tree->Branch("dx_pull", &dx_pull); TODO
+		//tree->Branch("dy_pull", &dy_pull);
+		//tree->Branch("dz_pull", &dz_pull);
 		tree->Fill(); 
 	}
 
@@ -961,8 +950,6 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 	//iEvent.put(std::move(tauCollection)); 
 
-
-   
  
 }
 
