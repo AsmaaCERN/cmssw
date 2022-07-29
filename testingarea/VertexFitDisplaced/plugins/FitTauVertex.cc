@@ -443,6 +443,10 @@ void FitTauVertex::genMatchTracks(const pixelTrack::TrackSoA& trackSoA, int max)
 	// Loop over the collection 
 	for (int i=0; i<max; i++) 
 	{
+		auto nHits = trackSoA.nHits(i); 
+		if (nHits==0) break; // Since we are looping over the size of the soa, we need to escape at the point where the elements are no longer used. 
+	  
+
 		double pT = trackSoA.pt(i); 
 
 		double eta = trackSoA.eta(i); 
@@ -519,7 +523,9 @@ void FitTauVertex::genMatchTracks(const pixelTrack::TrackSoA& trackSoA, int max)
 
 	assert(gen.TauPis.at(0).at(0)->vertex() == gen.TauPis.at(0).at(1)->vertex()); 
 	assert(gen.TauPis.at(0).at(1)->vertex() == gen.TauPis.at(0).at(2)->vertex()); 
-
+	//std::ofstream file("printouts");
+	//std::file << "zzzzzzzzzzzzzzzzzzzzfdsdfsfd" << tauMatched <<matchedTracks.size() <<std::endl;
+	//file.close();
 	if (tauMatched && (matchedTracks.size()==3)) // If the 3 pions from the tau are matched, we add the indices to the potential vertices
 	{
 		vertices.push_back(matchedTracks); 
@@ -657,6 +663,7 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    }
 
 	vertices.clear(); // empty the collection for the new event 
+	genVertices.clear(); 
 
 	
 	/*edm::Handle<edm:: HepMCProduct > genEvtHandle;
@@ -845,13 +852,17 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 		}
 	}*/
+	std::cout << "ajladskjladjlas" << genVertices.size() << vertices.size() << std::endl;
 
 	for (unsigned int i=0; i<genVertices.size(); i++) 
 	{
 		std::cout <<  genVertices.size() << vertices.at(i).size() << std::endl;
 
 		const auto genVertex = genVertices.at(i); // The gen vertex 
-
+		auto tau = gen.Tau.at(i); 
+		tau_pt = tau->pt(); 
+		tau_eta = tau->eta(); 
+		tau_phi = tau->phi(); 
 		for (auto iTk : vertices.at(i)) // put here vertexsoa.MAXTRACKS ? 
 		{
 			auto nHits = tracksoa.nHits(iTk); 
@@ -911,9 +922,13 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 			std::cout << "covvvvvv(0,0)" <<  karimakiCircle.cov(0,0)  << "hitss:" << nHits << std::endl;
 
 			brokenline::translateKarimaki(karimakiCircle, xt, yt, jacobian);
-			//file << jacobian << "\n\n" ;
+			//file << jacobian << "\n\n" ;git 
 			dx_pull = ( x0 - xt ) / sqrt(jacobian(0,0));
 			dy_pull = ( y0 - yt ) / sqrt(jacobian(1,1));
+			std::cout << "Filling!" << std::endl; 
+
+
+			tree->Fill(); 
 			//dz_pull = ( z0 - zt ) / sqrt(jacobian(?,?));
 
 			std::cout << jacobian(0,0) <<"jacobian " << iTk << ":" << jacobian << "dx pull?" << dx_pull << std::endl;
@@ -922,24 +937,6 @@ FitTauVertex::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 		}  
 		std::cout << maxNumTracks << vertices.size() << gen.Tau.size() << std::endl;
-
-	// Filling the tree 
-	for (auto i : vertices) 
-	{
-		std::cout << "Filling!" << std::endl; 
-		auto tau = gen.Tau.at(0); 
-		tau_pt = tau->pt(); 
-		tau_eta = tau->eta(); 
-		tau_phi = tau->phi(); 
-
-
-		//tree->Branch("dx_pull", &dx_pull); TODO
-		//tree->Branch("dy_pull", &dy_pull);
-		//tree->Branch("dz_pull", &dz_pull);
-		tree->Fill(); 
-	}
-
-	//tree->Fill(); 
 	
 
 	std::cout << "Added vertex collection of size: " << vertices.size() << std::endl; 
